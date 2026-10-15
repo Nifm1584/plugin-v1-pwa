@@ -1,6 +1,2 @@
-backslash-probe v1
-A-newline-B
-C-tab-D
-E-regex-F
-G-unicode-H
-END
+probe:[A
+B][C	D][E F][Gu0020H][I\dJ]END
