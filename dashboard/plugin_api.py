@@ -1,4 +1,4 @@
-"""Backend do hermes-pwa, montado em /api/plugins/hermes-pwa/.
+"""Backend do treg-pwa (versão independente do hermes-pwa), montado em /api/plugins/treg-pwa/.
 
 Duas responsabilidades:
   1. Servir o app (index.html, app.js, app.css, manifest, service worker, ícones, QR).
@@ -37,7 +37,8 @@ _STATIC = {
 # ── gateway API server ───────────────────────────────────────────────────────────
 
 def _api_base() -> str:
-    host = (os.environ.get("HERMES_PWA_API_HOST") or "127.0.0.1").strip()
+    # Nome próprio com fallback para o legado: permite configurar a cópia sem afetar o original.
+    host = (os.environ.get("TREG_PWA_API_HOST") or os.environ.get("HERMES_PWA_API_HOST") or "127.0.0.1").strip()
     port = (os.environ.get("API_SERVER_PORT") or "8642").strip()
     return f"http://{host}:{port}"
 
@@ -106,7 +107,7 @@ def index(request: Request):
 def manifest(request: Request):
     base = request.url.path.rsplit("/manifest.webmanifest", 1)[0] + "/"
     data = {
-        "name": "Hermes", "short_name": "Hermes", "description": "Chat com o Hermes Agent",
+        "name": "TREG", "short_name": "TREG", "description": "TREG: chat com o Hermes Agent (versão independente do hermes-pwa)",
         "id": base, "start_url": base, "scope": base, "display": "standalone",
         "orientation": "portrait", "background_color": "#0b1416", "theme_color": "#0f2f31",
         "lang": "pt-BR",
@@ -122,7 +123,7 @@ def manifest(request: Request):
 @router.get("/qr.svg", include_in_schema=False)
 def qr(request: Request, target: str = ""):
     """QR code (SVG) para o link do app; usado na aba PWA do painel."""
-    url = target or (str(request.base_url).rstrip("/") + "/pwa")
+    url = target or (str(request.base_url).rstrip("/") + "/treg")
     if not url.startswith(("http://", "https://")):
         raise HTTPException(status_code=400, detail="target inválido")
     try:
@@ -170,7 +171,7 @@ def profiles() -> Dict[str, Any]:
             out.append({"name": prof.name, "is_default": bool(prof.is_default), "model": prof.model or "",
                         "provider": prof.provider or "", "description": desc})
     except Exception as exc:
-        _log.warning("hermes-pwa: list_profiles falhou: %s", exc)
+        _log.warning("treg-pwa: list_profiles falhou: %s", exc)
         out = [{"name": "default", "is_default": True, "model": "", "provider": "", "description": ""}]
     multiplex = False
     try:
@@ -188,7 +189,7 @@ class NewSession(BaseModel):
 
 
 class PatchSession(BaseModel):
-    title: Optional[str] = None
+    title: Optional[bool] = None
     pinned: Optional[bool] = None
     archived: Optional[bool] = None
 
@@ -492,7 +493,7 @@ def approvals_set(body: ApprovalModeBody, profile: Optional[str] = None) -> Dict
     except HTTPException:
         raise
     except Exception as exc:
-        _log.exception("hermes-pwa: falha ao salvar approvals.mode")
+        _log.exception("treg-pwa: falha ao salvar approvals.mode")
         raise HTTPException(status_code=500, detail=f"Não foi possível salvar: {exc}")
 
 
@@ -588,7 +589,7 @@ async def stt_save(body: SttBody) -> Dict[str, Any]:
         cfg["stt"] = stt
         save_config(cfg)
     except Exception as exc:
-        _log.exception("hermes-pwa: falha ao salvar a configuração de transcrição")
+        _log.exception("treg-pwa: falha ao salvar a configuração de transcrição")
         raise HTTPException(status_code=500, detail=f"Não foi possível salvar: {exc}")
     return _stt_status()
 
