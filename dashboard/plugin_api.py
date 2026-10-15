@@ -49,7 +49,7 @@ def _api_key() -> str:
             from hermes_cli.config import get_env_path
             for line in Path(get_env_path()).read_text(encoding="utf-8").splitlines():
                 if line.strip().startswith("API_SERVER_KEY="):
-                    key = line.split("=", 1)[1].strip().strip("'\"")
+                    key = line.split("=", 1)[1].strip().strip("'\\\"")
                     break
         except Exception:
             pass
@@ -355,12 +355,12 @@ async def run_events(run_id: str, profile: Optional[str] = None):
                                     headers={"Authorization": f"Bearer {key}", "Accept": "text/event-stream"}) as r:
                     if r.status_code >= 400:
                         text = (await r.aread())[:300].decode(errors="replace")
-                        yield f"event: error\ndata: {json.dumps({'message': text, 'status': r.status_code})}\n\n".encode()
+                        yield f"event: error\\ndata: {json.dumps({'message': text, 'status': r.status_code})}\\n\\n".encode()
                         return
                     async for chunk in r.aiter_bytes():
                         yield chunk
         except Exception as exc:
-            yield f"event: error\ndata: {json.dumps({'message': str(exc)})}\n\n".encode()
+            yield f"event: error\\ndata: {json.dumps({'message': str(exc)})}\\n\\n".encode()
 
     return StreamingResponse(gen(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
@@ -392,12 +392,12 @@ async def chat_stream(session_id: str, body: ChatBody, profile: Optional[str] = 
                                     json={"message": msg}) as r:
                     if r.status_code >= 400:
                         detail = (await r.aread()).decode("utf-8", "replace")[:400]
-                        yield f"event: error\ndata: {json.dumps({'message': detail, 'status': r.status_code})}\n\n".encode()
+                        yield f"event: error\\ndata: {json.dumps({'message': detail, 'status': r.status_code})}\\n\\n".encode()
                         return
                     async for chunk in r.aiter_bytes():
                         yield chunk
         except Exception as exc:
-            yield f"event: error\ndata: {json.dumps({'message': str(exc)})}\n\n".encode()
+            yield f"event: error\\ndata: {json.dumps({'message': str(exc)})}\\n\\n".encode()
 
     return StreamingResponse(gen(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
