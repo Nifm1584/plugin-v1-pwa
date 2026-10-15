@@ -1,7 +1,7 @@
-/* hermes-pwa — app móvel do Hermes. Vanilla JS, sem build. */
+/* treg-pwa (versão independente do hermes-pwa) — app móvel do Hermes. Vanilla JS, sem build. */
 (function () {
   "use strict";
-  var API = "api/";            // relativo a /api/plugins/hermes-pwa/
+  var API = "api/";            // relativo a /api/plugins/treg-pwa/
   var $ = function (id) { return document.getElementById(id); };
   var state = { sessions: [], current: null, messages: [], streaming: false, filter: "", pollList: null, pollMsgs: null, model: {}, attachments: [], recorder: null, recChunks: [], recTimer: null, recStart: 0, profile: "default", profiles: [], multiplex: false };
 
@@ -345,7 +345,7 @@
   }
 
   // ───────────────────────── execução em segundo plano (acompanhar, retomar, concluir)
-  var RUN_KEY = "hermes-pwa-run";
+  var RUN_KEY = "treg-pwa-run";
   function savePendingRun(o) { try { if (o) localStorage.setItem(RUN_KEY, JSON.stringify(o)); else localStorage.removeItem(RUN_KEY); } catch (e) { } }
   function pendingRun() { try { return JSON.parse(localStorage.getItem(RUN_KEY) || "null"); } catch (e) { return null; } }
   var TERMINAL = { "run.completed": 1, "run.failed": 1, "run.cancelled": 1, "run.interrupted": 1 };
@@ -658,13 +658,13 @@
   $("agent").addEventListener("change", function (e) {
     var name = e.target.value;
     if (name !== "default" && !state.multiplex) { toast("Ligue gateway.multiplex_profiles para usar outros agentes"); e.target.value = state.profile; return; }
-    state.profile = name; try { localStorage.setItem("hermes-pwa-profile", name); } catch (x) { }
+    state.profile = name; try { localStorage.setItem("treg-pwa-profile", name); } catch (x) { }
     updateAgentModel(); state.sessions = []; renderSessions(); loadSessions();
   });
 
   // ───────────────────────── boot
   function boot() {
-    try { state.profile = localStorage.getItem("hermes-pwa-profile") || "default"; } catch (x) { }
+    try { state.profile = localStorage.getItem("treg-pwa-profile") || "default"; } catch (x) { }
     req("me").then(function (d) { state.model = (d && d.model) || {}; }).catch(function () { });
     loadProfiles().then(loadSessions);
     clearInterval(state.pollList); state.pollList = setInterval(function () { if (!state.current || $("chat").classList.contains("hidden")) loadSessions(true); }, 30000);
