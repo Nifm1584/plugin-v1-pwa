@@ -1,4 +1,4 @@
-/* hermes-pwa — tema claro (padrão) e escuro (prefers-color-scheme) */
+/* treg-pwa (versão independente do hermes-pwa) — tema claro (padrão) e escuro (prefers-color-scheme). Classes desta folha são escopadas ao documento próprio do app; só dist/style.css usa prefixo isolado (.tg-*) no DOM compartilhado do dashboard. */
 :root {
   --bg: #f0f2f5; --pane: #ffffff; --bar: #ffffff; --bar-text: #111b21; --line: #e6e9ec; --text: #111b21; --muted: #667781;
   --me: #d9fdd3; --me-text: #111b21; --bot: #ffffff; --accent: #0f8a7e; --accent-strong: #0b6f66; --on-accent: #ffffff;
