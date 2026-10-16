@@ -1,10 +1,11 @@
 # Plugin V1 PWA — versão independente do `hermes-pwa` para Hermes Agent
 
-> **Estado atual: em desenvolvimento e validação.** Este repositório espelha o plugin original
-> `hermes-pwa` **v1.7.1** (AstraOnlineWeb, licença MIT), acrescido da auditoria técnica completa
-> em `report/` (10 documentos). A identidade técnica independente (novo id, rotas, comando) e as
-> melhorias de interface **ainda não foram implementadas** — ver `report/07-plano-de-evolucao.md`
-> e `report/08-github-e-distribuicao.md`.
+> **Estado atual.** A branch `main` espelha o plugin original `hermes-pwa` **v1.7.1**
+> (AstraOnlineWeb, licença MIT) + auditoria técnica em `report/` (documentos 01–09).
+> **Esta branch (`fase-b-treg-pwa`) aplica a identidade independente `treg-pwa`** (Fase B:
+> isolamento para coexistência lado a lado) — ver `report/10-fase-b-isolamento.md` e
+> `report/11-instalacao-e-coexistencia.md`. Melhorias de interface **ainda não foram
+> implementadas**. Sem merge na `main` antes da validação real de coexistência.
 
 ## Objetivo
 
@@ -23,16 +24,16 @@ mensagens, agentes ou ferramentas que já são responsabilidade do Hermes.
 Plugin de dashboard (`kind: standalone`, sem dependências Python declaradas, sem tools/hooks):
 
 - **Backend** (`dashboard/plugin_api.py`, FastAPI `APIRouter` montado em
-  `/api/plugins/hermes-pwa/`): serve o app estático e faz proxy autenticado para o API server
-  do gateway (sessões, mensagens, chat com streaming, execuções `/v1/runs`, aprovações,
-  upload para `~/uploads`, perfis, modo de autorização, configuração STT). A `API_SERVER_KEY`
-  fica no servidor; o navegador usa só o cookie do dashboard.
+  `/api/plugins/treg-pwa/` nesta branch): serve o app estático e faz proxy autenticado para o
+  API server do gateway (sessões, mensagens, chat com streaming, execuções `/v1/runs`,
+  aprovações, upload para `~/uploads`, perfis, modo de autorização, configuração STT).
+  A `API_SERVER_KEY` fica no servidor; o navegador usa só o cookie do dashboard.
 - **App móvel** (`dashboard/pwa/`: `index.html`, `app.js`, `app.css`, `sw.js`): JavaScript puro,
   sem etapa de build; chat estilo mensageiro com streaming resiliente (a resposta continua no
   servidor em segundo plano), imagens/arquivos/voz com transcrição, aprovação de comandos.
 - **Aba do painel** (`dashboard/dist/`): React via SDK oficial (`window.__HERMES_PLUGIN_SDK__`)
   com QR code de instalação e configuração da transcrição de áudio.
-- **Comando de chat** (`__init__.py`): `/pwa` devolve o link do app em qualquer canal.
+- **Comando de chat** (`__init__.py`): `/treg` devolve o link do app em qualquer canal.
 
 Detalhes completos na auditoria: `report/01-arquitetura-e-funcionamento.md`.
 
@@ -43,40 +44,38 @@ plugin-v1-pwa/
 ├── README.md                  # este arquivo (apresentação V1 + doc original preservada abaixo)
 ├── LICENSE                    # MIT (AstraOnlineWeb — autoria original preservada)
 ├── .gitignore
-├── plugin.yaml                # metadados do plugin (id atual: hermes-pwa)
-├── __init__.py                # comando /pwa
+├── plugin.yaml                # metadados do plugin (id: treg-pwa nesta branch)
+├── __init__.py                # comando /treg
 ├── dashboard/
-│   ├── manifest.json          # aba PWA: tab /pwa, entry, css, api
+│   ├── manifest.json          # aba TREG: tab /treg, entry, css, api
 │   ├── plugin_api.py          # backend FastAPI (proxy + estático)
 │   ├── dist/                  # aba do painel (index.js, style.css, qrcode.js vendored MIT)
 │   └── pwa/                   # app móvel (index.html, app.js, app.css, sw.js, ícones)
 ├── tests/
 │   └── test_plugin.py         # testes de contrato estático (manifestos + comando)
-└── report/                    # auditoria técnica — 10 documentos (índice em report/README.md)
+└── report/                    # auditoria técnica + Fase B (índice em report/README.md)
 ```
 
 ## Pré-requisitos conhecidos (respaldados pela auditoria)
 
-- Hermes Agent v0.21 ou mais novo, com o dashboard acessível por **HTTPS** (sem HTTPS o
+- Hermes Agent v0.21.6, com o dashboard acessível por **HTTPS** (sem HTTPS o
   navegador não oferece a instalação do PWA).
 - API server do gateway ligado no `.env`/ambiente: `API_SERVER_ENABLED=true`,
   `API_SERVER_HOST=0.0.0.0`, `API_SERVER_PORT=8642`, `API_SERVER_KEY=<gerada com
-  openssl rand -hex 32>`.
+  openssl rand -hex 32>`. Opcional: `TREG_PWA_API_HOST` (override só da cópia).
 - Para múltiplos agentes no seletor: gateway multiplexado + mesma chave por perfil
   (detalhes na documentação original preservada abaixo).
 
-## Instalação (código no estado original — identidade independente ainda não aplicada)
+## Instalação (somente após validar a coexistência — nunca em produção sem teste)
 
 ```bash
-hermes plugins install AstraOnlineWeb/hermes-plugins/hermes-pwa --enable
+hermes plugins install Nifm1584/plugin-v1-pwa --enable
 hermes gateway restart
 ```
 
 Reinicie também o dashboard (ou o contêiner) para a aba aparecer. No celular, abra
-`https://SEU-DOMINIO/pwa` e faça login com o usuário do painel.
-
-> Esta instrução instala o **original**. A instalação da versão independente renomeada será
-> documentada aqui quando o plano de isolamento (`report/08`) for executado.
+`https://SEU-DOMINIO/treg` e faça login com o usuário do painel. Procedimento completo de
+validação lado a lado em `report/11-instalacao-e-coexistencia.md`.
 
 ## Auditoria técnica (`report/`)
 
@@ -92,6 +91,8 @@ Reinicie também o dashboard (ou o contêiner) para a aba aparecer. No celular, 
 | `report/07-plano-de-evolucao.md` | Plano faseado de melhorias (matriz por item) |
 | `report/08-github-e-distribuicao.md` | Isolamento, coexistência lado a lado, checklist de renomeação |
 | `report/09-evidencias-e-pendencias.md` | Evidências, lacunas e pendências de execução |
+| `report/10-fase-b-isolamento.md` | Execução do isolamento TREG (Fase B) |
+| `report/11-instalacao-e-coexistencia.md` | Plano prático de validação lado a lado |
 
 ## Objetivos da evolução (resumo — detalhe em `report/07`)
 
@@ -121,7 +122,8 @@ originais preservados, incluindo o cabeçalho do `qrcode-generator` (MIT, Kazuhi
 
 ## Documentação original do `hermes-pwa` (conteúdo preservado integralmente)
 
-> O texto abaixo é o README original do plugin, mantido como referência da implementação atual.
+> O texto abaixo é o README original do plugin, mantido como referência da implementação da qual
+> esta variante deriva.
 
 # hermes-pwa
 
