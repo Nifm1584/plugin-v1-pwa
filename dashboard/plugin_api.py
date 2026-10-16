@@ -189,7 +189,7 @@ class NewSession(BaseModel):
 
 
 class PatchSession(BaseModel):
-    title: Optional[bool] = None
+    title: Optional[str] = None
     pinned: Optional[bool] = None
     archived: Optional[bool] = None
 
