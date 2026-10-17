@@ -119,9 +119,9 @@
             h("ol", { className: "tg-steps" },
               h("li", null, "Aponte a câmera do celular para o QR ou abra ", h("span", { className: "tg-link" }, url)),
               h("li", null, "Faça login com o usuário e senha do painel."),
-              h("li", null, "Toque em \\\"Abrir app\\\"."),
-              h("li", null, "Android (Chrome): menu ⋮ → \\\"Instalar app\\\" ou \\\"Adicionar à tela inicial\\\"."),
-              h("li", null, "iPhone (Safari): botão Compartilhar → \\\"Adicionar à Tela de Início\\\".")
+              h("li", null, "Toque em \"Abrir app\"."),
+              h("li", null, "Android (Chrome): menu ⋮ → \"Instalar app\" ou \"Adicionar à tela inicial\"."),
+              h("li", null, "iPhone (Safari): botão Compartilhar → \"Adicionar à Tela de Início\".")
             ),
             h("div", { className: "tg-actions" },
               h(C.Button, { onClick: function () { window.location.href = APP; } }, "Abrir app (nesta aba)"),

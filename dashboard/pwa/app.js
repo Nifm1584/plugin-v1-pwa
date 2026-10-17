@@ -17,28 +17,28 @@
   }
   function sourceLabel(s) { return ({ whatsapp: "WhatsApp", telegram: "Telegram", discord: "Discord", slack: "Slack", tui: "Terminal", cli: "Terminal", api_server: "App", dashboard: "Painel", desktop: "Desktop", cron: "Cron", hermes_browser: "Browser" })[s] || (s || "?"); }
   function initial(s) { return sourceLabel(s).charAt(0).toUpperCase(); }
-  function sessionTitle(s) { return (s.title && s.title.trim()) || (s.preview && s.preview.trim().split("\\n")[0].slice(0, 48)) || s.id; }
-  function shortModel(m) { return (m || "").replace(/^.*\\//, ""); }
+  function sessionTitle(s) { return (s.title && s.title.trim()) || (s.preview && s.preview.trim().split("\n")[0].slice(0, 48)) || s.id; }
+  function shortModel(m) { return (m || "").replace(/^.*\//, ""); }
 
   // markdown-lite seguro: escapa tudo, depois aplica blocos de código, inline code, negrito, itálico, links, listas e parágrafos
   function md(text) {
     var t = esc(text);
     var blocks = [];
-    t = t.replace(/```([a-z0-9_-]*)\\n([\\s\\S]*?)```/g, function (_, lang, code) { blocks.push("<pre><code>" + code.replace(/\\n$/, "") + "</code></pre>"); return "@@BLOCK" + (blocks.length - 1) + "@@"; });
-    t = t.replace(/`([^`\\n]+)`/g, "<code>$1</code>");
-    t = t.replace(/\\*\\*([^*\\n]+)\\*\\*/g, "<b>$1</b>").replace(/(^|[^*])\\*([^*\\n]+)\\*/g, "$1<i>$2</i>");
-    t = t.replace(/(https?:\\/\\/[^\\s<]+[^\\s<.,;:!?)])/g, '<a href="$1" target="_blank" rel="noreferrer">$1</a>');
-    var lines = t.split("\\n"), out = [], inList = null;
+    t = t.replace(/```([a-z0-9_-]*)\n([\s\S]*?)```/g, function (_, lang, code) { blocks.push("<pre><code>" + code.replace(/\n$/, "") + "</code></pre>"); return "@@BLOCK" + (blocks.length - 1) + "@@"; });
+    t = t.replace(/`([^`\n]+)`/g, "<code>$1</code>");
+    t = t.replace(/\*\*([^*\n]+)\*\*/g, "<b>$1</b>").replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<i>$2</i>");
+    t = t.replace(/(https?:\/\/[^\s<]+[^\s<.,;:!?)])/g, '<a href="$1" target="_blank" rel="noreferrer">$1</a>');
+    var lines = t.split("\n"), out = [], inList = null;
     lines.forEach(function (ln) {
-      var m = ln.match(/^\\s*([-*•]|\\d+[.)])\\s+(.*)$/);
-      if (m) { var kind = /\\d/.test(m[1]) ? "ol" : "ul"; if (inList !== kind) { if (inList) out.push("</" + inList + ">"); out.push("<" + kind + ">"); inList = kind; } out.push("<li>" + m[2] + "</li>"); return; }
+      var m = ln.match(/^\s*([-*•]|\d+[.)])\s+(.*)$/);
+      if (m) { var kind = /\d/.test(m[1]) ? "ol" : "ul"; if (inList !== kind) { if (inList) out.push("</" + inList + ">"); out.push("<" + kind + ">"); inList = kind; } out.push("<li>" + m[2] + "</li>"); return; }
       if (inList) { out.push("</" + inList + ">"); inList = null; }
-      if (/^@@BLOCK\\d+@@$/.test(ln.trim())) { out.push(ln.trim()); return; }
+      if (/^@@BLOCK\d+@@$/.test(ln.trim())) { out.push(ln.trim()); return; }
       if (ln.trim() === "") return;
-      out.push("<p>" + ln.replace(/^#{1,6}\\s+/, "") + "</p>");
+      out.push("<p>" + ln.replace(/^#{1,6}\s+/, "") + "</p>");
     });
     if (inList) out.push("</" + inList + ">");
-    return out.join("").replace(/@@BLOCK(\\d+)@@/g, function (_, i) { return blocks[+i]; });
+    return out.join("").replace(/@@BLOCK(\d+)@@/g, function (_, i) { return blocks[+i]; });
   }
 
   // ───────────────────────── rede
@@ -112,7 +112,7 @@
       var li = document.createElement("li");
       if (state.current && state.current.id === s.id) li.className = "active";
       li.innerHTML = '<div class="avatar ' + esc(s.source || "") + '">' + esc(initial(s.source)) + '</div>' +
-        '<div class="s-main"><div class="s-title">' + (s.pinned ? "📌 " : "") + esc(sessionTitle(s)) + '</div><div class="s-prev">' + esc((s.preview || "").replace(/\\s+/g, " ").slice(0, 80) || "sem mensagens") + '</div></div>' +
+        '<div class="s-main"><div class="s-title">' + (s.pinned ? "📌 " : "") + esc(sessionTitle(s)) + '</div><div class="s-prev">' + esc((s.preview || "").replace(/\s+/g, " ").slice(0, 80) || "sem mensagens") + '</div></div>' +
         '<div class="s-meta"><span>' + esc(fmtTime(s.last_active || s.started_at)) + '</span><span class="badge">' + esc(sourceLabel(s.source)) + '</span></div>';
       var more = document.createElement("button"); more.type = "button"; more.className = "more"; more.setAttribute("aria-label", "Opções"); more.innerHTML = "&#8943;";
       more.addEventListener("click", function (e) { e.stopPropagation(); openSheet(s); });
@@ -169,27 +169,27 @@
   //   📎 Arquivo: /opt/data/home/uploads/yyy.pdf (nome, 1.2 MB)
   function parseUserText(text) {
     var out = { voices: [], files: [], text: "" }, rest = [];
-    var lines = (text || "").split("\\n"), i = 0;
+    var lines = (text || "").split("\n"), i = 0;
     while (i < lines.length) {
       var ln = lines[i];
-      var mv = ln.match(/^🎤 Áudio(?: \\((\\d+)s)\\))?: (\\S+)\\s*$/);
+      var mv = ln.match(/^🎤 Áudio(?: \((\d+)s\))?: (\S+)\s*$/);
       if (mv) {
         var v = { src: "api/uploads/" + encodeURIComponent(mv[2].split("/").pop()), transcript: "", note: "" }; i++;
-        if (i < lines.length && /^Transcrição: /.test(lines[i])) { v.transcript = lines[i].replace(/^Transcrição: /, ""); i++; while (i < lines.length && lines[i] && !/^(🎤|📎|Transcrição:)/.test(lines[i]) && v.transcript && !/^Arquivos anexados/.test(lines[i])) { v.transcript += "\\n" + lines[i]; i++; } }
-        else if (i < lines.length && /^\\(sem transcrição/.test(lines[i])) { v.note = lines[i]; i++; }
+        if (i < lines.length && /^Transcrição: /.test(lines[i])) { v.transcript = lines[i].replace(/^Transcrição: /, ""); i++; while (i < lines.length && lines[i] && !/^(🎤|📎|Transcrição:)/.test(lines[i]) && v.transcript && !/^Arquivos anexados/.test(lines[i])) { v.transcript += "\n" + lines[i]; i++; } }
+        else if (i < lines.length && /^\(sem transcrição/.test(lines[i])) { v.note = lines[i]; i++; }
         out.voices.push(v); continue;
       }
-      var mf = ln.match(/^📎 Arquivo: (\\S+) \\((.*)\\)\\s*$/);
+      var mf = ln.match(/^📎 Arquivo: (\S+) \((.*)\)\s*$/);
       if (mf) { out.files.push(mf[2]); i++; continue; }
-      if (/^Arquivos anexados pelo usuário/.test(ln) || /^- \\/.*uploads\\//.test(ln) || /^\\(Os arquivos ficam em/.test(ln)) { i++; continue; }
+      if (/^Arquivos anexados pelo usuário/.test(ln) || /^- \/.*uploads\//.test(ln) || /^\(Os arquivos ficam em/.test(ln)) { i++; continue; }
       rest.push(ln); i++;
     }
-    out.text = rest.join("\\n").trim();
+    out.text = rest.join("\n").trim();
     return out;
   }
   function contentText(c) {
     if (typeof c === "string") return c;
-    if (Array.isArray(c)) return c.filter(function (p) { return p && p.type === "text"; }).map(function (p) { return p.text || ""; }).join("\\n");
+    if (Array.isArray(c)) return c.filter(function (p) { return p && p.type === "text"; }).map(function (p) { return p.text || ""; }).join("\n");
     return c == null ? "" : String(c);
   }
   function contentImages(c) {
@@ -207,10 +207,10 @@
       var parsed = parseUserText(text);
       parsed.voices.forEach(function (v) {
         html += '<div class="voice"><audio controls preload="metadata" src="' + esc(v.src) + '"></audio>' +
-          (v.transcript ? '<div class="transcript"><span class="tlabel">Transcrição</span>' + esc(v.transcript).replace(/\\n/g, "<br>") + '</div>' : '<div class="transcript co-muted">' + esc(v.note || "sem transcrição") + '</div>') + '</div>';
+          (v.transcript ? '<div class="transcript"><span class="tlabel">Transcrição</span>' + esc(v.transcript).replace(/\n/g, "<br>") + '</div>' : '<div class="transcript co-muted">' + esc(v.note || "sem transcrição") + '</div>') + '</div>';
       });
       if (parsed.files.length) html += '<div class="files">' + parsed.files.map(function (f) { return "📎 " + esc(f); }).join("<br>") + "</div>";
-      if (parsed.text) html += "<p>" + esc(parsed.text).replace(/\\n/g, "<br>") + "</p>";
+      if (parsed.text) html += "<p>" + esc(parsed.text).replace(/\n/g, "<br>") + "</p>";
     } else if (text) html += md(text);
     if (m.timestamp) html += '<span class="time">' + esc(fmtTime(m.timestamp)) + "</span>";
     div.innerHTML = html;
@@ -276,7 +276,7 @@
     if ((!text && !atts.length) || state.streaming || !state.current) return;
     // /new e /reset: no PWA cada conversa tem o proprio id, entao o comando do gateway
     // nao troca a conversa aberta. Cria uma nova aqui, como no Telegram.
-    var mNew = !atts.length && /^\\/(new|reset)(?:\\s+(.*))?$/i.exec(text);
+    var mNew = !atts.length && /^\/(new|reset)(?:\s+(.*))?$/i.exec(text);
     if (mNew) {
       input.value = ""; input.style.height = "auto";
       var newTitle = (mNew[2] || "").trim() || null;
@@ -317,13 +317,13 @@
       var voices = r[0], ups = r[1];
       var body = text;
       voices.forEach(function (v, k) {
-        var dur = (v.att.name.match(/audio-(\\d+)s/) || [])[1];
-        body += (body ? "\\n" : "") + "🎤 Áudio" + (dur ? " (" + dur + "s)" : "") + ": " + v.up.path + "\\n" + (v.transcript ? "Transcrição: " + v.transcript : "(sem transcrição disponível; é uma mensagem de voz, transcreva se possível)");
+        var dur = (v.att.name.match(/audio-(\d+)s/) || [])[1];
+        body += (body ? "\n" : "") + "🎤 Áudio" + (dur ? " (" + dur + "s)" : "") + ": " + v.up.path + "\n" + (v.transcript ? "Transcrição: " + v.transcript : "(sem transcrição disponível; é uma mensagem de voz, transcreva se possível)");
         var t = el.querySelectorAll(".voice .transcript")[k];
         if (t) { t.className = "transcript" + (v.transcript ? "" : " co-muted"); t.innerHTML = v.transcript ? '<span class="tlabel">Transcrição</span>' + esc(v.transcript) : "sem transcrição"; }
       });
-      ups.forEach(function (u) { body += (body ? "\\n" : "") + "📎 Arquivo: " + u.path + " (" + u.name + ", " + fmtSize(u.size) + ")"; });
-      if (ups.length) body += "\\n(Os arquivos ficam em ~/uploads; leia com suas ferramentas de arquivo.)";
+      ups.forEach(function (u) { body += (body ? "\n" : "") + "📎 Arquivo: " + u.path + " (" + u.name + ", " + fmtSize(u.size) + ")"; });
+      if (ups.length) body += "\n(Os arquivos ficam em ~/uploads; leia com suas ferramentas de arquivo.)";
       userMsg.content = body;
       if (!images.length) return body || "Veja os anexos.";
       var parts = [{ type: "text", text: body || (images.length > 1 ? "Veja as imagens anexadas." : "Veja a imagem anexada.") }];
@@ -391,10 +391,10 @@
           return reader.read().then(function (x) {
             if (x.done) return;
             buf += dec.decode(x.value, { stream: true });
-            var parts = buf.split("\\n\\n"); buf = parts.pop();
+            var parts = buf.split("\n\n"); buf = parts.pop();
             parts.forEach(function (chunk) {
               var ev = "message", data = "";
-              chunk.split("\\n").forEach(function (ln) { if (ln.indexOf("event:") === 0) ev = ln.slice(6).trim(); else if (ln.indexOf("data:") === 0) data += ln.slice(5).trim(); });
+              chunk.split("\n").forEach(function (ln) { if (ln.indexOf("event:") === 0) ev = ln.slice(6).trim(); else if (ln.indexOf("data:") === 0) data += ln.slice(5).trim(); });
               if (data) { var d = {}; try { d = JSON.parse(data); } catch (e) { } runEvent(ctx, ev, d); }
             });
             return pump();
