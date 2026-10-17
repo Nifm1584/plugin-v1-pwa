@@ -57,6 +57,7 @@ var qrcode = function() {
       setupPositionProbePattern(0, 0);
       setupPositionProbePattern(_moduleCount - 7, 0);
       setupPositionProbePattern(0, _moduleCount - 7);
+      setupPositionAdjustPattern();
       setupTimingPattern();
       setupTypeInfo(test, maskPattern);
 
@@ -694,7 +695,7 @@ var qrcode = function() {
       var ascii = '';
       var line = '';
       for (y = 0; y < size; y += 1) {
-        r = Math.floor( (y - min) / cellSize);
+        r = Math.floor((y - min) / cellSize);
         line = '';
         for (x = 0; x < size; x += 1) {
           p = 1;
@@ -2241,6 +2242,7 @@ var qrcode = function() {
 
   //---------------------------------------------------------------------
   // returns qrcode function.
+  //---------------------------------------------------------------------
 
   return qrcode;
 }();
