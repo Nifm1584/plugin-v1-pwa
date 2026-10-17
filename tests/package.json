@@ -1,0 +1,12 @@
+{
+  "name": "treg-pwa-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Testes Node.js do plugin TREG PWA",
+  "scripts": {
+    "test:qrcode": "node qrcode.test.js"
+  },
+  "devDependencies": {
+    "jsqr": "1.4.0"
+  }
+}
