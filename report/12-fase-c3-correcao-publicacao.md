@@ -9,16 +9,25 @@ Correção isolada na branch `fix/treg-pwa-c3-publicacao-segura`, baseada origin
 - `dashboard/dist/qrcode.js`: revertida a duplicação de oito sequências de escape.
 - `dashboard/plugin_api.py`: corrigidos os escapes duplicados nos quadros SSE de erro e na leitura de chave/configuração.
 - `__init__.py`: corrigidos escapes duplicados na mensagem devolvida pelo comando `/treg`.
-- `dashboard/pwa/icon-192.png` e `dashboard/pwa/icon-512.png`: adicionados a partir dos assets do `hermes-pwa` oficial, para satisfazer manifesto, apple-touch-icon e precache do service worker.
-- `.github/workflows/treg-pwa-validation.yml`: adicionada validação automatizada para conferir a sintaxe dos JavaScripts e executar os testes Python.
+- `dashboard/pwa/icon-192.png` e `dashboard/pwa/icon-512.png`: adicionados a partir dos assets do `hermes-pwa` oficial, necessários para manifesto, apple-touch-icon e precache do service worker.
+- `.github/workflows/treg-pwa-validation.yml`: adicionada validação automatizada para JavaScript e Python.
 
-## Verificações estáticas
-Os arquivos corrigidos foram comparados com as versões correspondentes do plugin ancestral. As barras duplicadas/triplas encontradas foram normalizadas para a forma usada no ancestral, sem substituir o código exclusivo do TREG. A expressão regular de áudio coincide com a expressão válida do ancestral. Os dois PNGs têm cabeçalhos IHDR compatíveis com 192×192 e 512×512, respectivamente.
+## Validação automatizada concluída
+Workflow: [TREG PWA validation](https://github.com/Nifm1584/plugin-v1-pwa/actions/runs/38984914136)  
+Commit testado: `61fc3c9253bd9e4239641d04fc186b4cfd2b386d`  
+Resultado geral: **success**.
 
-A compilação de sintaxe no runtime V8, sem executar o código, passou para `app.js`, `dist/index.js`, `dist/qrcode.js` e `sw.js`.
+- `node --check dashboard/pwa/app.js` — passou.
+- `node --check dashboard/dist/index.js` — passou.
+- `node --check dashboard/dist/qrcode.js` — passou.
+- `node --check dashboard/pwa/sw.js` — passou.
+- `python -m py_compile __init__.py dashboard/plugin_api.py` — passou.
+- `python -m pytest tests -q` — **2 passed in 0.03s**.
 
-## Testes automatizados
-O workflow agora executa `node --check` nos quatro JavaScripts e `python -m pytest tests -q`. O resultado do workflow será atualizado aqui depois que o GitHub Actions terminar; não presumir aprovação antes da execução.
+Os arquivos foram conferidos no conteúdo publicado da branch, não apenas no conteúdo preparado antes do envio. Os ícones publicados são PNGs válidos de 192×192 (1.664 bytes) e 512×512 (4.943 bytes).
+
+## Limites da validação
+`hermes plugins validate` não foi executado porque a pipeline não instala o Hermes Agent. A validação acima cobre sintaxe e testes automatizados do repositório; não substitui o teste funcional no Hermes instalado.
 
 ## Segurança e isolamento
-Nenhum deploy ou acesso à VPS foi feito. Nenhum arquivo do núcleo Hermes ou do plugin `hermes-pwa` foi modificado.
+Nenhum deploy ou acesso à VPS foi feito. Nenhum arquivo do núcleo Hermes ou do plugin `hermes-pwa` foi modificado. A branch `main` permanece intacta.
