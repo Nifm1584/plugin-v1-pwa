@@ -1,0 +1,31 @@
+name: TREG PWA validation
+
+on:
+  push:
+    branches:
+      - fix/treg-pwa-c3-publicacao-segura
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install test dependencies
+        run: python -m pip install --disable-pip-version-check pytest pyyaml
+      - name: Check JavaScript syntax
+        run: |
+          node --check dashboard/pwa/app.js
+          node --check dashboard/dist/index.js
+          node --check dashboard/dist/qrcode.js
+          node --check dashboard/pwa/sw.js
+      - name: Run plugin tests
+        run: python -m pytest tests -q

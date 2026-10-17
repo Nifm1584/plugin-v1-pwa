@@ -26,9 +26,9 @@ def pwa_url() -> str:
 
 def cmd_pwa(raw_args: str = "") -> str:
     return (
-        "📱 TREG — app móvel do Hermes (PWA, versão independente)\\n"
-        f"Abra no celular: {pwa_url()}\\n"
-        "Faça login, toque em \\\"Abrir app\\\" e depois em \\\"Adicionar à tela inicial\\\"."
+        "📱 TREG — app móvel do Hermes (PWA, versão independente)\n"
+        f"Abra no celular: {pwa_url()}\n"
+        "Faça login, toque em \"Abrir app\" e depois em \"Adicionar à tela inicial\"."
     )
 
 
