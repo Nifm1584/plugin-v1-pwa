@@ -34,7 +34,7 @@ Não houve teste em navegador, celular, PWA instalado, câmera, microfone ou ins
 
 O TREG PWA já tem uma base funcional de mensageiro: lista de sessões, busca, chat com streaming, runs em segundo plano, markdown-lite, anexos, voz, perfis de agente, aprovação de comandos, tema automático, QR code e estrutura de PWA instalável.
 
-O que está comprovadamente validado é narrower: geração e decodificação de QR Codes, contratos estáticos dos manifestos, sintaxe JavaScript, compilação Python, `pytest` e a CI da fase C7. O restante do produto está **existente, pendente de teste** ou **existente mas parcial**.
+O que está comprovadamente validado é limitado: geração e decodificação de QR Codes, contratos estáticos dos manifestos, sintaxe JavaScript, compilação Python, `pytest` e a CI da fase C7. O restante do produto está **existente, pendente de teste** ou **existente mas parcial**.
 
 As maiores lacunas são:
 
@@ -338,7 +338,7 @@ Adotar três camadas separadas, sem misturar semântica:
 - Não prometer push notifications.
 - Não assumir Kanban instalado nem vínculo por mensagem.
 - Não alterar o núcleo do Hermes para obter status; a integração deve ser por interface existente ou contrato aprovado.
-- Não substituir o `hermes-pwa` originalnem instalar na VPS nesta fase.
+- Não substituir o `hermes-pwa` original nem instalar na VPS nesta fase.
 
 ## 10. Conclusão
 
