@@ -27,5 +27,7 @@ jobs:
           node --check dashboard/dist/index.js
           node --check dashboard/dist/qrcode.js
           node --check dashboard/pwa/sw.js
+      - name: Compile Python plugin files
+        run: python -m py_compile __init__.py dashboard/plugin_api.py
       - name: Run plugin tests
         run: python -m pytest tests -q
