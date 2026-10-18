@@ -52,7 +52,7 @@ As lacunas reais são: uploads comuns de arquivo, captura de câmera, áudio/tra
 
 | Fato | Evidência | Consequência |
 |---|---|---|
-| QR Codes curtos, médios e longos são gerados e decodificados corretamente | `tests/qrcode.test.js`; CI run `39075301916` com success; execução local da suíte em 2026-10-17: 3/3 casos | O defeito de `setupPositionAdjustPattern()` está corrigido e coberto |
+| QR Codes curtos, médios e longos são gerados e decodificados corretamente | `tests/qrcode.test.js`; CI run `39075301916` com success; execução da suíte em sandbox em 2026-10-17: 3/3 casos | O defeito de `setupPositionAdjustPattern()` está corrigido e coberto |
 | Manifestos estáticos e comando do plugin passam nos testes | `tests/test_plugin.py`; CI C7; `pytest`: 2 passed | Contrato básico do plugin preservado |
 | Sintaxe JavaScript e compilação Python passam | CI C7: `node --check` e `python -m py_compile` | Não há erro sintático conhecido nesses arquivos |
 | Existe lista de sessões, chat, runs, aprovação, anexos e voz no app | `dashboard/pwa/app.js`; `dashboard/plugin_api.py` | Base funcional ampla; o usuário validou o uso no navegador móvel, mas a equipe não executou testes de dispositivo |
@@ -84,7 +84,7 @@ Essas validações são evidência de produto, mas não são **[F]** nem **EV**:
 | A primeira conversa tem formatação diferente por reconciliação entre bolha local e mensagem persistida | [H] H1 do `report/03`/`09`; causa não provada | Criar conversa limpa, enviar markdown/código, comparar `innerHTML` antes e depois de reload |
 | Persistência de imagem no histórico: a imagem reaparece apenas como texto/marcador | [H] documentada no README original; o envio/análise da foto foi validado pelo usuário, mas a persistência não foi testada | Enviar foto, fechar, reabrir em outro dispositivo e conferir o histórico |
 | A instalação standalone funciona em Android Chrome e iPhone Safari (opcional) | [H] depende de HTTPS, manifest, SW e política de cada navegador; não é requisito do baseline | Somente se o produto quiser oferecer instalação: usar “Adicionar à tela inicial” no menu do navegador e verificar o modo standalone; não é gate |
-| O QR abre o app no navegador móvel; não há onboarding de instalação próprio | [H] o QR aponta para `/treg`, que redireciona para o app quando acessado diretamente | Escanear o QR no celular e confirmar que o app abre no navegador; adicionar à tela inicial é opcional e não é gate |
+| O QR abre o app no navegador móvel; instalação não faz parte do baseline | [H] o QR aponta para `/treg`, que redireciona para o app quando acessado diretamente | Escanear o QR no celular e confirmar que o app abre no navegador; adicionar à tela inicial é opcional e não é gate |
 | A gravação de áudio funciona com os MIME types disponíveis em iOS/Android | [H] o código tenta `webm/opus`, `webm`, `mp4` e `ogg`, mas não foi validada pelo usuário nem pela equipe | Gravar 5 s, 1 min e 5 min no Safari/Chrome; ouvir e transcrever |
 | A transcrição funciona e degrada sem chave | [H] o fluxo e o fallback existem no código, mas não foram validados pelo usuário nem pela equipe | Testar com chave Groq válida, inválida e ausente |
 | O campo `unread` pode ser usado para marcar conversa não lida | [H] o banco tem `last_read_at` e o PATCH aceita `unread`, mas o payload de `/api/sessions` no HEAD inspecionado remove o campo | Confirmar na versão Hermes instalada; sem campo de leitura, não prometer |
@@ -204,10 +204,9 @@ Adotar três camadas separadas, sem misturar semântica:
 | M08 | Vídeo como anexo | EP | `accept` inclui `video/*` (`index.html:54`), mas vídeo é tratado como arquivo genérico; não há player | Decidir entre suportar preview/player ou remover `video/*` da promessa visual |
 | M09 | Captura de câmera no anexo | AD | Não há `capture` nem sheet de câmera | Botão “Câmera” abre câmera traseira quando suportado; fallback para galeria |
 | M10 | Acesso e uso do TREG PWA pelo navegador do celular | EV-U | **[U]** relato do usuário; não executado pela equipe; manifest/SW em `plugin_api.py:106-121`, `sw.js`, `index.html:7-16`; a interface não tem instalação automática nem botão próprio | Abrir e usar o app no navegador móvel; smoke de regressão. Adicionar à tela inicial é opcional e não é gate |
-| M10a | Instalação standalone via recurso do navegador (opcional) | EP (opcional) | Manifest, ícones e SW existem; não há instalador próprio; instalação real não testada e não é requisito do baseline | Se o produto quiser instalação: “Adicionar à tela inicial” no navegador e abrir em standalone; não bloqueia o baseline |
 | M11 | QR code de acesso | EV | Correção C7; `tests/qrcode.test.js`; CI C7 success | QR de URL curta/média/longa decodifica para a URL exata; leitor físico abre a URL do app no navegador |
 | M12 | Offline shell e atualização do SW | ET | `sw.js` cacheia casca, não API; versão `treg-pwa-v1` | Abrir sem rede mostra app; update de versão recarrega uma vez; API nunca vem do cache |
-| M13 | QR como atalho para abrir o app no navegador móvel | EP | QR aponta para `/treg`; acesso direto a `/treg` redireciona para o app (`dist/index.js:99-116`); não há onboarding de instalação próprio | Escanear o QR e chegar ao app no navegador; adicionar à tela inicial é opcional e não é gate |
+| M13 | QR como atalho para abrir o app no navegador móvel | ET | QR aponta para `/treg`; acesso direto a `/treg` redireciona para o app (`dist/index.js:99-116`); geração validada em M11, mas a leitura física ainda não foi testada; onboarding de instalação não faz parte do baseline | Escanear o QR no celular e chegar ao app no navegador; instalação é opcional e não é gate |
 
 **Nota sobre instalação:** a interface atual não oferece instalação automática nem botão próprio de instalação. O site pode ser adicionado à tela inicial usando o menu do navegador (por exemplo, Chrome), quando disponível; isso é opcional e não é critério de aprovação do baseline. Não exigir modo standalone.
 
@@ -217,7 +216,7 @@ Adotar três camadas separadas, sem misturar semântica:
 - **Manifesto e arquivos estáticos:** validados pela equipe quanto a presença e contrato; isso não é teste de instalação.
 - **Acesso e uso pelo navegador do celular:** validado pelo usuário **[U]**, não executado pela equipe.
 - **Envio de foto do celular e análise pelo Hermes:** validado pelo usuário **[U]**, com validação adicional reportada por Ducan; não executado pela equipe.
-- **Instalação standalone:** não validada; é opcional, feita pelo navegador quando disponível, e não é gate. A interface não tem instalação automática nem botão próprio.
+- **Instalação standalone:** fora do baseline; quando desejada, é uma ação opcional do navegador. A interface não tem instalação automática nem botão próprio.
 - **Upload persistente de imagem e uploads comuns de arquivo:** não validados.
 - **Áudio real, transcrição e player:** não validados.
 - **Câmera, colar print, drag-drop e múltiplas imagens em dispositivo:** não validados.
@@ -251,7 +250,7 @@ Adotar três camadas separadas, sem misturar semântica:
 - Foto enviada do celular e analisada pelo Hermes: registrar a evidência **[U]** e executar smoke de regressão; não tratar como pendência de primeira validação.
 - QR abre a URL correta e leva ao app no navegador móvel; não há requisito de onboarding de instalação.
 - Colar, arrastar, múltiplas imagens e limites entram no tray; remoção funciona.
-- Câmera abre quando suportada e tem fallback; upload e captura continuam como lacunas a validar.
+- Câmera é testada: quando suportada, abre com fallback; se indisponível, o fluxo de seleção pela galeria funciona. O resultado é registrado.
 - PDF próximo de 25 MB sobe, é listado e baixa; arquivo maior é rejeitado.
 - Áudio de 5 s, 1 min e 5 min grava, toca e transcreve; sem chave, fallback funciona.
 - Lista/chat funcionam em 320/360/390 px com teclado aberto e fechado.
