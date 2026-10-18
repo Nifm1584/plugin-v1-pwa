@@ -37,7 +37,7 @@ A equipe não executou testes em dispositivo (navegador móvel, PWA instalado, c
 
 O TREG PWA já tem uma base funcional de mensageiro: lista de sessões, busca, chat com streaming, runs em segundo plano, markdown-lite, anexos, voz, perfis de agente, aprovação de comandos, tema automático, QR code e estrutura de PWA (manifest e service worker), sem instalação automática nem botão próprio de instalação.
 
-O que está validado hoje combina duas origens: (a) execução/CI da equipe — geração e decodificação de QR Codes, contratos estáticos dos manifestos, sintaxe JavaScript, compilação Python, `pytest` e a CI da fase C7; (b) relato do usuário — acesso e uso do TREG PWA pelo navegador do celular e envio de foto do celular com visualização/análise pelo Hermes, com validação adicional reportada por Ducan. Nenhum item **[U]** foi executado pela equipe. O restante do produto está **existente, pendente de teste** ou **existente mas parcial**.
+O que está validado hoje combina duas origens: (a) execução/CI da equipe — geração e decodificação de QR Codes, contratos estáticos dos manifestos, sintaxe JavaScript, compilação Python, `pytest` e a CI da fase C7; (b) relato do usuário — acesso e uso do TREG PWA pelo navegador do celular e envio de foto do celular com visualização/análise pelo Hermes, com validação adicional reportada por Ducan. Nenhum item **[U]** foi executado pela equipe. O restante do produto está **existente e pendente de teste**, **existente mas parcial**, ou **a desenvolver**.
 
 As maiores lacunas são:
 
@@ -108,7 +108,7 @@ Essas validações são evidência de produto, mas não são **[F]** nem **EV**:
 | D09a | Colar, arrastar, múltiplas imagens, limite de 6, 25 MB por arquivo e remoção | ET | `app.js:470-534`; `index.html:54`; não validado | Print colado e drag-drop entram no tray; múltiplas até 6; remoção antes do envio; sem duplicação |
 | D10 | Sheet “Anexar” com câmera, galeria, arquivo e áudio | AD | Hoje o clipe abre o seletor direto; não há `capture` nem sheet | Sheet com quatro opções; câmera abre no Android/iOS quando suportado; fallback para seletor |
 | D11 | Tema claro/escuro automático | ET | `app.css:1-13`; `theme-color` com media queries em `index.html:7-8` | Segue o tema do sistema sem flash perceptível e mantém contraste nos dois modos |
-| D12 | Tema claro/escuro manual com persistência | AD | Não há toggle, `data-theme` nem `localStorage` de tema; manifest usa `theme_color` fixo escuro (`plugin_api.py:106-121`) | Três estados (Auto/Claro/Escuro), persistência após reload no navegador; splash coerente |
+| D12 | Tema claro/escuro manual com persistência | AD | Não há toggle, `data-theme` nem `localStorage` de tema; manifest usa `theme_color` fixo escuro (`plugin_api.py:106-121`) | Três estados (Auto/Claro/Escuro), persistência após reload no navegador; theme-color coerente (e splash coerente somente se o usuário optar por instalar). |
 | D13 | Navegação e teclado no layout mobile | ET | `index.html:5`; `app.css:17-23`; `app.js:268-273` | Enter envia, Shift+Enter quebra; teclado não cobre a última bolha; voltar preserva estado |
 | D14 | Layout desktop lado a lado | ET | `app.css:107-116` | ≥ 900 px mostra lista e chat; < 900 px mostra um painel por vez |
 | D15 | Acessibilidade | EP | `aria-label` e `role=dialog` existem; faltam `aria-live`, foco gerenciado, `prefers-reduced-motion` e label explícito do seletor | Navegação por teclado; leitor de tela anuncia novas mensagens; contraste AA; movimento reduzido |
