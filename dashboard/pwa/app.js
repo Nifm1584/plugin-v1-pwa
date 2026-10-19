@@ -3,7 +3,7 @@
   "use strict";
   var API = "api/";            // relativo a /api/plugins/treg-pwa/
   var $ = function (id) { return document.getElementById(id); };
-  var api = window.TregApi && window.TregApi.create({ base: API, origin: location.origin, timeout: 30000 });
+  var api = window.TregApi && window.TregApi.create({ base: API, origin: location.origin, pageUrl: location.href, timeout: 30000 });
   var state = { sessions: [], sessionsOffset: 0, sessionsHasMore: false, sessionsLoading: false, sessionsError: null, searchResults: null, searchQuery: "", searchLoading: false, searchError: null, searchAvailable: true, searchSeq: 0, capabilities: null, current: null, messages: [], messagesLoading: false, messagesError: null, streaming: false, filter: "", pollList: null, pollMsgs: null, model: {}, attachments: [], recorder: null, recChunks: [], recTimer: null, recStart: 0, recCancel: false, profile: "default", profiles: [], multiplex: false, runCtx: null };
 
   // ───────────────────────── util

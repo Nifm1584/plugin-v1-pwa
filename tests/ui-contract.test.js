@@ -21,6 +21,7 @@ for (const id of requiredIds) {
 assert.ok(html.indexOf("hermes-api.js") < html.indexOf("app.js"), "hermes-api.js deve carregar antes de app.js");
 assert.ok(html.includes('data-act="pin"'), "ação de fixar ausente no menu");
 assert.ok(sw.includes('"hermes-api.js"'), "service worker não inclui hermes-api.js");
+assert.ok(app.includes("pageUrl: location.href"), "camada de API sem URL base da página");
 assert.ok(app.includes("api.searchHistory"), "busca remota não usa a camada de API");
 assert.ok(app.includes("api.stopRun"), "parada de execução não usa a camada de API");
 assert.ok(app.includes("mergeSessions"), "paginação não reutiliza a mesclagem");

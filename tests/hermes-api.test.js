@@ -24,6 +24,7 @@ async function testSessionsAndPagination() {
   const api = TregApi.create({
     base: "api/",
     origin: "https://treg.example",
+    pageUrl: "https://treg.example/api/plugins/treg-pwa/",
     fetch: mockFetch(function (url, init, n) {
       if (n === 1) return response({ data: [{ id: "s1", title: "Um", preview: "a", pinned: true }], has_more: true });
       return response({ data: [{ id: "s2", title: "Dois", preview: "b" }, { id: "s1", title: "Um atualizado" }], has_more: false });
@@ -32,6 +33,7 @@ async function testSessionsAndPagination() {
   const first = await api.getSessions({ limit: 80, offset: 0 });
   assert.equal(first.items.length, 1);
   assert.equal(first.hasMore, true);
+  assert.match(calls[0].url, /^https:\/\/treg\.example\/api\/plugins\/treg-pwa\/api\/sessions\?limit=80/);
   const second = await api.getSessions({ limit: 80, offset: 80, profile: "work" });
   assert.equal(second.hasMore, false);
   assert.match(calls[1].url, /offset=80/);
@@ -46,6 +48,7 @@ async function testSearchAndFallbackSignal() {
   const api = TregApi.create({
     base: "api/",
     origin: "https://treg.example",
+    pageUrl: "https://treg.example/api/plugins/treg-pwa/",
     fetch: mockFetch(function (url) {
       if (url.indexOf("missing") >= 0) return response({ detail: "Not found" }, 404);
       return response({ results: [{ session_id: "s9", title: "Achado", snippet: "trecho", source: "telegram" }] });
@@ -70,6 +73,7 @@ async function testMutationsAndCapabilities() {
   const api = TregApi.create({
     base: "api/",
     origin: "https://treg.example",
+    pageUrl: "https://treg.example/api/plugins/treg-pwa/",
     fetch: mockFetch(function (url, init) {
       if (url.indexOf("/capabilities") >= 0) {
         return response({ gateway: { features: { run_stop: false, session_chat: true } }, plugin: { session_pin: true } });
@@ -101,6 +105,7 @@ async function testLegacyCapabilitiesAndAuth() {
   const api = TregApi.create({
     base: "api/",
     origin: "https://treg.example",
+    pageUrl: "https://treg.example/api/plugins/treg-pwa/",
     fetch: mockFetch(function (url) {
       if (url.indexOf("/sessions") >= 0) return response({ detail: "unauthorized" }, 401);
       return response({ gateway: null, gateway_error: { status: 404 } });
@@ -115,12 +120,45 @@ async function testLegacyCapabilitiesAndAuth() {
   );
 }
 
+async function testResolvedPaths() {
+  calls = [];
+  const api = TregApi.create({
+    base: "api/",
+    origin: "https://treg.example",
+    pageUrl: "https://treg.example/api/plugins/treg-pwa/",
+    fetch: mockFetch(function (url) {
+      if (url.indexOf("/messages") >= 0) return response({ data: [] });
+      if (url.indexOf("/runs") >= 0) return response({ run_id: "run_1" });
+      if (url.indexOf("/search") >= 0) return response({ results: [] });
+      if (url.indexOf("/transcribe") >= 0) return response({ transcript: "" });
+      if (url.indexOf("/password-login") >= 0) return response({ ok: true });
+      return response({ data: [], has_more: false });
+    })
+  });
+  await api.getSessions({ limit: 80 });
+  await api.getMessages("s1");
+  await api.createRun("s1", "Olá");
+  await api.runEvents("run_1");
+  await api.searchHistory("termo");
+  await api.transcribe({ data_url: "data:audio/webm;base64,AA==", mime_type: "audio/webm" });
+  await api.login({ provider: "basic", username: "u", password: "p" });
+
+  assert.match(calls[0].url, /^https:\/\/treg\.example\/api\/plugins\/treg-pwa\/api\/sessions\?limit=80$/);
+  assert.match(calls[1].url, /^https:\/\/treg\.example\/api\/plugins\/treg-pwa\/api\/sessions\/s1\/messages$/);
+  assert.match(calls[2].url, /^https:\/\/treg\.example\/api\/plugins\/treg-pwa\/api\/sessions\/s1\/runs$/);
+  assert.match(calls[3].url, /^https:\/\/treg\.example\/api\/plugins\/treg-pwa\/api\/runs\/run_1\/events$/);
+  assert.match(calls[4].url, /^https:\/\/treg\.example\/api\/sessions\/search\?q=termo/);
+  assert.match(calls[5].url, /^https:\/\/treg\.example\/api\/audio\/transcribe$/);
+  assert.match(calls[6].url, /^https:\/\/treg\.example\/auth\/password-login$/);
+}
+
 async function testEventStream() {
   calls = [];
   const streamResponse = { ok: true, status: 200, body: {} };
   const api = TregApi.create({
     base: "api/",
     origin: "https://treg.example",
+    pageUrl: "https://treg.example/api/plugins/treg-pwa/",
     fetch: mockFetch(function () { return streamResponse; })
   });
   const result = await api.runEvents("run_1", "work");
@@ -134,6 +172,7 @@ async function main() {
   await testSearchAndFallbackSignal();
   await testMutationsAndCapabilities();
   await testLegacyCapabilitiesAndAuth();
+  await testResolvedPaths();
   await testEventStream();
   console.log("PASS hermes-api: paginação, busca, pin, stop, SSE, capabilities e auth");
 }

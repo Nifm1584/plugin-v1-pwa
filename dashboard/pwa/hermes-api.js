@@ -87,7 +87,10 @@
     var fetchImpl = opts.fetch || (typeof fetch !== "undefined" ? fetch : null);
     var base = opts.base || "api/";
     var origin = opts.origin || "";
+    var pageUrl = opts.pageUrl || (origin ? origin + "/" : (typeof location !== "undefined" ? location.href : "http://localhost/"));
     var defaultTimeout = opts.timeout || 0;
+    var baseUrl = /^https?:\/\//.test(base) ? base : new URL(base, pageUrl).toString();
+    if (baseUrl.charAt(baseUrl.length - 1) !== "/") baseUrl += "/";
 
     function absolute(path) {
       if (/^https?:\/\//.test(path)) return path;
@@ -140,7 +143,7 @@
     }
 
     function request(path, requestOptions) {
-      return doFetch(absolute(base + path), requestOptions);
+      return doFetch(new URL(path, baseUrl).toString(), requestOptions);
     }
 
     function requestAbsolute(path, requestOptions) {
@@ -207,7 +210,7 @@
       },
       runEvents: function (id, profile) {
         if (!fetchImpl) return Promise.reject(new ApiError("fetch indisponível", 0, "no_fetch"));
-        return fetchImpl(absolute(base + "runs/" + encodeURIComponent(id) + "/events" + buildQuery({ profile: profile })), {
+        return fetchImpl(new URL("runs/" + encodeURIComponent(id) + "/events" + buildQuery({ profile: profile }), baseUrl).toString(), {
           method: "GET",
           credentials: "same-origin",
           headers: { "Accept": "text/event-stream" }
