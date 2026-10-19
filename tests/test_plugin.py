@@ -8,7 +8,7 @@ def test_manifests():
     assert m["name"] == "treg-pwa" and m["version"] and m["description"]
     d = json.loads((ROOT / "dashboard" / "manifest.json").read_text())
     assert d["name"] == "treg-pwa" and d["api"] == "plugin_api.py" and d["tab"]["path"] == "/treg"
-    for f in ("index.html", "app.js", "app.css", "sw.js", "icon-192.png", "icon-512.png", "icon.svg"):
+    for f in ("index.html", "app.js", "hermes-api.js", "app.css", "sw.js", "icon-192.png", "icon-512.png", "icon.svg"):
         assert (ROOT / "dashboard" / "pwa" / f).exists(), f
 
 def test_register_command():

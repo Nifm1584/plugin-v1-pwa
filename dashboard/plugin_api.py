@@ -26,6 +26,7 @@ _HERE = Path(__file__).resolve().parent
 _PWA = _HERE / "pwa"
 _STATIC = {
     "app.js": ("application/javascript; charset=utf-8", _PWA / "app.js"),
+    "hermes-api.js": ("application/javascript; charset=utf-8", _PWA / "hermes-api.js"),
     "app.css": ("text/css; charset=utf-8", _PWA / "app.css"),
     "sw.js": ("application/javascript; charset=utf-8", _PWA / "sw.js"),
     "icon.svg": ("image/svg+xml", _PWA / "icon.svg"),
@@ -217,6 +218,34 @@ def me(request: Request) -> Dict[str, Any]:
     return {"user": str(user), "model": model, "api_base": _api_base()}
 
 
+@router.get("/api/capabilities")
+async def capabilities(profile: Optional[str] = None) -> Dict[str, Any]:
+    """Capacidades do gateway + extensões do plugin.
+
+    A rota é deliberadamente tolerante: versões antigas do Hermes podem não
+    expor ``/v1/capabilities``. Nesse caso devolvemos ``gateway: null`` para que
+    o cliente trate os recursos como desconhecidos, em vez de desligá-los.
+    """
+    gateway: Any = None
+    error: Optional[Dict[str, Any]] = None
+    try:
+        gateway = await _proxy_json("GET", _pfx(profile) + "/v1/capabilities")
+    except HTTPException as exc:
+        error = {"status": exc.status_code, "detail": exc.detail}
+    except Exception as exc:
+        error = {"status": 0, "detail": str(exc)}
+    return {
+        "gateway": gateway,
+        "gateway_error": error,
+        "plugin": {
+            "session_search": True,
+            "session_pin": True,
+            "run_stop": True,
+            "audio_transcribe": True,
+        },
+    }
+
+
 @router.get("/api/sessions")
 async def list_sessions(limit: int = 60, offset: int = 0, source: Optional[str] = None, profile: Optional[str] = None) -> Any:
     params: Dict[str, Any] = {"limit": max(1, min(limit, 200)), "offset": max(0, offset)}
@@ -244,6 +273,11 @@ async def patch_session(session_id: str, body: PatchSession, profile: Optional[s
 @router.delete("/api/sessions/{session_id}")
 async def delete_session(session_id: str, profile: Optional[str] = None) -> Any:
     return await _proxy_json("DELETE", f"{_pfx(profile)}/api/sessions/{session_id}")
+
+
+@router.get("/api/sessions/{session_id}")
+async def get_session(session_id: str, profile: Optional[str] = None) -> Any:
+    return await _proxy_json("GET", f"{_pfx(profile)}/api/sessions/{session_id}")
 
 
 @router.get("/api/sessions/{session_id}/messages")
@@ -338,6 +372,13 @@ async def run_status(run_id: str, profile: Optional[str] = None) -> Any:
     if not _RUN_ID_RE.match(run_id):
         raise HTTPException(status_code=400, detail="execução inválida")
     return await _proxy_json("GET", f"{_pfx(profile)}/v1/runs/{run_id}")
+
+
+@router.post("/api/runs/{run_id}/stop")
+async def stop_run(run_id: str, profile: Optional[str] = None) -> Any:
+    if not _RUN_ID_RE.match(run_id):
+        raise HTTPException(status_code=400, detail="execução inválida")
+    return await _proxy_json("POST", f"{_pfx(profile)}/v1/runs/{run_id}/stop", body={})
 
 
 @router.get("/api/runs/{run_id}/events")

@@ -28,10 +28,19 @@ jobs:
       - name: Check JavaScript syntax
         run: |
           node --check dashboard/pwa/app.js
+          node --check dashboard/pwa/hermes-api.js
           node --check dashboard/dist/index.js
           node --check dashboard/dist/qrcode.js
           node --check dashboard/pwa/sw.js
           node --check tests/qrcode.test.js
+          node --check tests/hermes-api.test.js
+          node --check tests/ui-contract.test.js
+      - name: Run API compatibility tests
+        working-directory: tests
+        run: npm run test:api
+      - name: Run UI contract tests
+        working-directory: tests
+        run: npm run test:ui
       - name: Run QR code round-trip tests
         working-directory: tests
         run: npm run test:qrcode
