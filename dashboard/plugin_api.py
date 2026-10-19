@@ -26,6 +26,7 @@ _HERE = Path(__file__).resolve().parent
 _PWA = _HERE / "pwa"
 _STATIC = {
     "app.js": ("application/javascript; charset=utf-8", _PWA / "app.js"),
+    "ui-utils.js": ("application/javascript; charset=utf-8", _PWA / "ui-utils.js"),
     "hermes-api.js": ("application/javascript; charset=utf-8", _PWA / "hermes-api.js"),
     "app.css": ("text/css; charset=utf-8", _PWA / "app.css"),
     "sw.js": ("application/javascript; charset=utf-8", _PWA / "sw.js"),

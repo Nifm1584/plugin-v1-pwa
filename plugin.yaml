@@ -1,6 +1,6 @@
 name: treg-pwa
-version: 1.7.1
-description: "TREG PWA (versão independente do hermes-pwa 1.7.1): app móvel do Hermes em formato PWA, instalável no celular — chat estilo mensageiro com todas as sessões, troca de agente (perfis), imagens, arquivos e mensagens de voz com transcrição. Servido pelo próprio dashboard, com aba TREG (QR code) e comando /treg. Coexiste com o plugin original."
+version: 1.8.0b1
+description: "TREG PWA 1.8.0b1 (Fase 5B — teste visual): app móvel do Hermes em formato PWA, instalável no celular — chat estilo mensageiro com todas as sessões, troca de agente (perfis), imagens, arquivos, voz com transcrição, cópia de mensagens, datas e temas Auto/Claro/Escuro. Servido pelo dashboard, com aba TREG (QR code) e comando /treg. Coexiste com o plugin original."
 author: "AstraOnlineWeb"
 kind: standalone
 license: MIT

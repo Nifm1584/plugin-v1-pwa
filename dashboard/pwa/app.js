@@ -3,8 +3,10 @@
   "use strict";
   var API = "api/";            // relativo a /api/plugins/treg-pwa/
   var $ = function (id) { return document.getElementById(id); };
+  var ui = window.TregUi;
   var api = window.TregApi && window.TregApi.create({ base: API, origin: location.origin, pageUrl: location.href, timeout: 30000 });
-  var state = { sessions: [], sessionsOffset: 0, sessionsHasMore: false, sessionsLoading: false, sessionsError: null, searchResults: null, searchQuery: "", searchLoading: false, searchError: null, searchAvailable: true, searchSeq: 0, capabilities: null, current: null, messages: [], messagesLoading: false, messagesError: null, streaming: false, filter: "", pollList: null, pollMsgs: null, model: {}, attachments: [], recorder: null, recChunks: [], recTimer: null, recStart: 0, recCancel: false, profile: "default", profiles: [], multiplex: false, runCtx: null };
+  var themeMedia = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : { matches: false };
+  var state = { sessions: [], sessionsOffset: 0, sessionsHasMore: false, sessionsLoading: false, sessionsError: null, searchResults: null, searchQuery: "", searchLoading: false, searchError: null, searchAvailable: true, searchSeq: 0, capabilities: null, current: null, messages: [], messagesLoading: false, messagesError: null, streaming: false, filter: "", pollList: null, pollMsgs: null, model: {}, attachments: [], recorder: null, recChunks: [], recTimer: null, recStart: 0, recCancel: false, profile: "default", profiles: [], multiplex: false, runCtx: null, themePref: "auto" };
 
   // ───────────────────────── util
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
@@ -20,6 +22,43 @@
   function initial(s) { return sourceLabel(s).charAt(0).toUpperCase(); }
   function sessionTitle(s) { return (s.title && s.title.trim()) || (s.preview && s.preview.trim().split("\n")[0].slice(0, 48)) || s.id; }
   function shortModel(m) { return (m || "").replace(/^.*\//, ""); }
+  function avatarLabel(s) { return ui ? ui.avatarInitial(sessionTitle(s), sourceLabel(s.source)) : initial(s.source); }
+
+  function markTheme(pref) {
+    Array.prototype.forEach.call($("settings").querySelectorAll("[data-theme-choice]"), function (button) {
+      var current = button.getAttribute("data-theme-choice") === pref;
+      button.classList.toggle("current", current);
+      button.setAttribute("aria-pressed", current ? "true" : "false");
+    });
+  }
+  function applyTheme(preference, persist) {
+    var pref = ui ? ui.normalizeTheme(preference) : "auto";
+    var resolved = ui ? ui.resolveTheme(pref, themeMedia) : (themeMedia.matches ? "dark" : "light");
+    state.themePref = pref;
+    document.documentElement.setAttribute("data-theme", resolved);
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta && ui) meta.setAttribute("content", ui.themeColor(resolved));
+    markTheme(pref);
+    if (persist) {
+      try { localStorage.setItem(ui.THEME_KEY, pref); } catch (error) { }
+    }
+  }
+  function initTheme() {
+    var stored = "auto";
+    try { stored = ui ? localStorage.getItem(ui.THEME_KEY) : "auto"; } catch (error) { }
+    applyTheme(stored || "auto", false);
+    var onThemeChange = function () {
+      if (state.themePref === "auto") applyTheme("auto", false);
+    };
+    if (themeMedia.addEventListener) themeMedia.addEventListener("change", onThemeChange);
+    else if (themeMedia.addListener) themeMedia.addListener(onThemeChange);
+  }
+  function copyMessage(text) {
+    if (!ui || !String(text || "").trim()) return;
+    ui.copyText(text, { clipboard: navigator.clipboard, document: document })
+      .then(function () { toast("Mensagem copiada"); })
+      .catch(function () { toast("Não foi possível copiar a mensagem"); });
+  }
 
   // markdown-lite seguro: escapa tudo, depois aplica blocos de código, inline code, negrito, itálico, links, listas e parágrafos
   function md(text) {
@@ -139,7 +178,7 @@
       var li = document.createElement("li");
       if (state.current && state.current.id === s.id) li.className = "active";
       var preview = (s.search ? (s.snippet || s.preview || "") : (s.preview || "")).replace(/\s+/g, " ").slice(0, 100);
-      li.innerHTML = '<div class="avatar ' + esc(s.source || "") + '">' + esc(initial(s.source)) + '</div>' +
+      li.innerHTML = '<div class="avatar ' + esc(s.source || "") + '">' + esc(avatarLabel(s)) + '</div>' +
         '<div class="s-main"><div class="s-title">' + (s.pinned ? "📌 " : "") + esc(sessionTitle(s)) + '</div><div class="s-prev">' + esc(preview || "sem mensagens") + '</div></div>' +
         '<div class="s-meta"><span>' + esc(fmtTime(s.last_active || s.started_at)) + '</span><span class="badge">' + esc(s.search ? "Busca" : sourceLabel(s.source)) + '</span></div>';
       var more = document.createElement("button"); more.type = "button"; more.className = "more"; more.setAttribute("aria-label", "Opções"); more.innerHTML = "&#8943;";
@@ -248,6 +287,8 @@
   }
   function openSession(s) {
     state.current = s; state.messages = []; state.messagesLoading = true; state.messagesError = null;
+    var chatAvatar = $("chat-avatar");
+    if (chatAvatar) { chatAvatar.className = "avatar chat-avatar " + (s.source || ""); chatAvatar.textContent = avatarLabel(s); }
     $("chat-title").textContent = sessionTitle(s);
     $("chat-sub").textContent = (s.profile && s.profile !== "default" ? "Agente " + s.profile + " · " : "") + sourceLabel(s.source) + (s.model ? " · " + shortModel(s.model) : (function () { var pr = state.profiles.filter(function (x) { return x.name === (s.profile || "default"); })[0]; var m = (pr && pr.model) || state.model.default; return m ? " · " + shortModel(m) : ""; })());
     $("messages").innerHTML = ""; renderChatStatus(); updateStopButton();
@@ -325,6 +366,17 @@
     if (!Array.isArray(c)) return [];
     return c.filter(function (p) { return p && p.type === "image_url" && p.image_url && p.image_url.url; }).map(function (p) { return p.image_url.url; });
   }
+    function addCopyAction(div, text) {
+    var existing = div.querySelector(".msg-actions");
+    if (existing) existing.remove();
+    if (!String(text || "").trim()) return;
+    var actions = document.createElement("div"); actions.className = "msg-actions";
+    var copy = document.createElement("button"); copy.type = "button"; copy.className = "copy-msg";
+    copy.title = "Copiar mensagem"; copy.setAttribute("aria-label", "Copiar mensagem");
+    copy.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+    copy.addEventListener("click", function (event) { event.stopPropagation(); copyMessage(text); });
+    actions.appendChild(copy); div.appendChild(actions);
+  }
   function bubble(m) {
     var div = document.createElement("div");
     div.className = "msg " + (m.role === "user" ? "user" : m.role === "assistant" ? "assistant" : "system") + (m.error ? " error" : "");
@@ -332,8 +384,10 @@
     var html = "";
     if (imgs.length) html += '<div class="imgs">' + imgs.map(function (u) { return '<img src="' + esc(u) + '" alt="imagem">'; }).join("") + "</div>";
     var text = contentText(m.content);
+    var copyable = "";
     if (m.role === "user") {
       var parsed = parseUserText(text);
+      copyable = parsed.text || "";
       parsed.voices.forEach(function (v) {
         html += '<div class="voice"><audio controls preload="metadata" src="' + esc(v.src) + '"></audio>' +
           (v.transcript ? '<div class="transcript"><span class="tlabel">Transcrição</span>' + esc(v.transcript).replace(/\n/g, "<br>") + '</div>' : '<div class="transcript co-muted">' + esc(v.note || "sem transcrição") + '</div>') + '</div>';
@@ -342,10 +396,14 @@
         return '<a class="file-link" href="' + esc(f.url) + '" download="' + esc(f.name) + '" target="_blank" rel="noreferrer"><span>📎</span><span>' + esc(f.name) + '</span><small>' + esc(f.size || "") + '</small></a>';
       }).join("") + "</div>";
       if (parsed.text) html += "<p>" + esc(parsed.text).replace(/\n/g, "<br>") + "</p>";
-    } else if (text) html += md(text);
+    } else {
+      copyable = text;
+      if (text) html += md(text);
+    }
     if (m.timestamp) html += '<span class="time">' + esc(fmtTime(m.timestamp)) + "</span>";
     div.innerHTML = html;
     div.querySelectorAll(".imgs img").forEach(function (im) { im.addEventListener("click", function () { lightbox(im.src); }); });
+    if (m.role !== "system") addCopyAction(div, copyable);
     return div;
   }
   function lightbox(src) {
@@ -360,7 +418,17 @@
     var box = $("messages");
     var stick = nearBottom();
     box.innerHTML = "";
-    state.messages.forEach(function (m) { box.appendChild(bubble(m)); });
+    var groups = ui ? ui.groupMessages(state.messages) : [{ key: "", label: "", messages: state.messages }];
+    groups.forEach(function (group) {
+      if (group.key) {
+        var separator = document.createElement("div");
+        separator.className = "day-sep";
+        separator.setAttribute("role", "separator");
+        separator.textContent = group.label;
+        box.appendChild(separator);
+      }
+      group.messages.forEach(function (message) { box.appendChild(bubble(message)); });
+    });
     if (stick) scrollBottom();
   }
   function scrollBottom() { var box = $("messages"); box.scrollTop = box.scrollHeight; }
@@ -529,7 +597,7 @@
     if (ev === "message.delta" || ev === "assistant.delta") {
       bot.content += d.delta || "";
       if (!ctx.botEl) { ctx.botEl = bubble(bot); $("messages").appendChild(ctx.botEl); }
-      ctx.botEl.innerHTML = md(bot.content); scrollBottom(); setTyping(true, "escrevendo…");
+      ctx.botEl.innerHTML = md(bot.content); addCopyAction(ctx.botEl, bot.content); scrollBottom(); setTyping(true, "escrevendo…");
     } else if (ev === "approval.request") {
       var approvalKey = d.request_id || d.prompt_id || d.run_id || String(Date.now());
       if (!ctx.approvalsSeen) ctx.approvalsSeen = {};
@@ -544,7 +612,7 @@
       if (out) bot.content = out;
       bot.timestamp = Date.now() / 1000;
       if (!ctx.botEl) { ctx.botEl = bubble(bot); $("messages").appendChild(ctx.botEl); }
-      ctx.botEl.innerHTML = md(bot.content) + '<span class="time">' + esc(fmtTime(bot.timestamp)) + "</span>"; scrollBottom();
+      ctx.botEl.innerHTML = md(bot.content) + '<span class="time">' + esc(fmtTime(bot.timestamp)) + "</span>"; addCopyAction(ctx.botEl, bot.content); scrollBottom();
       finishRun(ctx);
     } else if (ev === "run.failed" || ev === "error") {
       ctx.approvals.forEach(function (c) { c.expire(); });
@@ -776,6 +844,9 @@
     });
   }
   function openSettings() {
+    markTheme(state.themePref);
+    var version = $("app-version");
+    if (version) version.textContent = ui ? ui.versionLabel() : "TREG · Fase 5B · 1.8.0b1";
     $("settings-sub").textContent = "Agente: " + (state.profile || "default") + ". Carregando…";
     markMode(""); $("settings").classList.remove("hidden");
     callApi(api.getApprovals(state.profile))
@@ -784,6 +855,8 @@
   }
   $("btn-settings").addEventListener("click", openSettings);
   $("settings").addEventListener("click", function (e) {
+    var themeButton = e.target.closest ? e.target.closest("[data-theme-choice]") : null;
+    if (themeButton) { applyTheme(themeButton.getAttribute("data-theme-choice"), true); return; }
     var el = e.target.closest ? e.target.closest("button") : null;
     if (e.target === $("settings") || (el && el.getAttribute("data-act") === "close")) { $("settings").classList.add("hidden"); return; }
     if (!el || !el.getAttribute("data-mode")) return;
@@ -893,7 +966,7 @@
 
   // ───────────────────────── boot
   function boot() {
-    applyViewport(); updateNetwork();
+    initTheme(); applyViewport(); updateNetwork();
     try { state.profile = localStorage.getItem("treg-pwa-profile") || "default"; } catch (x) { }
     req("me").then(function (d) { state.model = (d && d.model) || {}; }).catch(function () { });
     loadCapabilities();

@@ -3,15 +3,28 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0f2f31" media="(prefers-color-scheme: dark)">
+<meta id="theme-color" name="theme-color" content="#ffffff">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="TREG">
-<title>TREG</title>
+<title>TREG — Fase 5B</title>
 <link rel="manifest" href="manifest.webmanifest" crossorigin="use-credentials">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-192.png">
+<script>
+(function () {
+  try {
+    var pref = localStorage.getItem("treg-pwa-theme");
+    if (pref !== "light" && pref !== "dark") pref = "auto";
+    var dark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    document.documentElement.setAttribute("data-theme", pref === "auto" ? (dark ? "dark" : "light") : pref);
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", pref === "auto" ? (dark ? "#0f2f31" : "#ffffff") : (pref === "dark" ? "#0f2f31" : "#ffffff"));
+  } catch (error) {
+    document.documentElement.setAttribute("data-theme", "light");
+  }
+})();
+</script>
 <link rel="stylesheet" href="app.css">
 </head>
 <body>
@@ -46,6 +59,7 @@
   <main id="chat" class="pane chat hidden">
     <header class="bar">
       <button id="btn-back" class="icon" aria-label="Voltar"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
+      <div id="chat-avatar" class="avatar chat-avatar" aria-hidden="true">T</div>
       <div class="title-wrap">
         <div id="chat-title" class="title">—</div>
         <div id="chat-sub" class="sub"></div>
@@ -87,12 +101,21 @@
 
 <div id="settings" class="sheet hidden">
   <div class="sheet-card">
+    <div class="settings-section">
+      <div class="sheet-title">Aparência</div>
+      <div class="theme-options" role="group" aria-label="Tema">
+        <button type="button" data-theme-choice="auto" aria-pressed="false">Auto</button>
+        <button type="button" data-theme-choice="light" aria-pressed="false">Claro</button>
+        <button type="button" data-theme-choice="dark" aria-pressed="false">Escuro</button>
+      </div>
+    </div>
     <div class="sheet-title">Autorização de comandos</div>
     <p id="settings-sub" class="sheet-text"></p>
     <button data-mode="manual" class="opt"><b>Sempre perguntar</b><span>Pede autorização para todo comando perigoso.</span></button>
     <button data-mode="smart" class="opt"><b>Inteligente</b><span>Só pede autorização quando o comando parece arriscado.</span></button>
     <button data-mode="off" class="opt risk"><b>Não perguntar</b><span>Executa tudo sem pedir. Use só em servidor de teste ou dedicado ao agente.</span></button>
     <button data-act="close" class="muted">Fechar</button>
+    <div id="app-version" class="about-version">TREG · Fase 5B · 1.8.0b1</div>
   </div>
 </div>
 
@@ -120,6 +143,7 @@
   </form>
 </div>
 <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+<script src="ui-utils.js"></script>
 <script src="hermes-api.js"></script>
 <script src="app.js"></script>
 </body>

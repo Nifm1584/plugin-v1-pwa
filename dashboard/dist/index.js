@@ -145,6 +145,7 @@
     return h("div", { className: "tg-page" },
       h("div", null,
         h("h1", { className: "tg-title" }, "App móvel TREG (PWA)"),
+        h("p", { className: "tg-sub" }, "TREG 1.8.0b1 · Fase 5B — teste visual"),
         h("p", { className: "tg-sub" }, "Esta página é só a instalação. O app em si abre em tela cheia, sem o painel em volta, em " + appUrl + ". No celular, /treg já abre o app direto.")
       ),
       install,

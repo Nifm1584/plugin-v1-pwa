@@ -6,7 +6,8 @@
   "scripts": {
     "test:qrcode": "node qrcode.test.js",
     "test:api": "node hermes-api.test.js",
-    "test:ui": "node ui-contract.test.js"
+    "test:ui": "node ui-contract.test.js",
+    "test:uiutils": "node ui-utils.test.js"
   },
   "devDependencies": {
     "jsqr": "1.4.0"

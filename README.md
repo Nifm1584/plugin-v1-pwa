@@ -2,10 +2,14 @@
 
 > **Estado atual.** A branch `main` espelha o plugin original `hermes-pwa` **v1.7.1**
 > (AstraOnlineWeb, licença MIT) + auditoria técnica em `report/` (documentos 01–09).
-> **Esta branch (`fase-b-treg-pwa`) aplica a identidade independente `treg-pwa`** (Fase B:
-> isolamento para coexistência lado a lado) — ver `report/10-fase-b-isolamento.md` e
-> `report/11-instalacao-e-coexistencia.md`. Melhorias de interface **ainda não foram
-> implementadas**. Sem merge na `main` antes da validação real de coexistência.
+> **Esta branch aplica a identidade independente `treg-pwa`** (Fase B: isolamento para
+> coexistência lado a lado) — ver `report/10-fase-b-isolamento.md` e
+> `report/11-instalacao-e-coexistencia.md`.
+>
+> **Versão de teste da Fase 5B:** `1.8.0b1` — inclui identificação de versão no app,
+> cópia de mensagens, separadores de data, temas Auto/Claro/Escuro, avatares
+> determinísticos e ajustes de legibilidade. Ver `report/26-implementacao-fase-5b-visual.md`.
+> Sem merge na `main` antes da validação real.
 
 ## Objetivo
 
