@@ -57,6 +57,7 @@ var qrcode = function() {
       setupPositionProbePattern(0, 0);
       setupPositionProbePattern(_moduleCount - 7, 0);
       setupPositionProbePattern(0, _moduleCount - 7);
+      setupPositionAdjustPattern();
       setupTimingPattern();
       setupTypeInfo(test, maskPattern);
 
@@ -582,17 +583,17 @@ var qrcode = function() {
 
       var img = '';
       img += '<img';
-      img += '\\u0020src="';
+      img += '\u0020src="';
       img += _this.createDataURL(cellSize, margin);
       img += '"';
-      img += '\\u0020width="';
+      img += '\u0020width="';
       img += size;
       img += '"';
-      img += '\\u0020height="';
+      img += '\u0020height="';
       img += size;
       img += '"';
       if (alt) {
-        img += '\\u0020alt="';
+        img += '\u0020alt="';
         img += escapeXml(alt);
         img += '"';
       }
@@ -662,7 +663,7 @@ var qrcode = function() {
           ascii += (margin < 1 && y+1 >= max) ? blocksLastLineNoMargin[p] : blocks[p];
         }
 
-        ascii += '\\n';
+        ascii += '\n';
       }
 
       if (size % 2 && margin > 0) {
@@ -694,7 +695,7 @@ var qrcode = function() {
       var ascii = '';
       var line = '';
       for (y = 0; y < size; y += 1) {
-        r = Math.floor( (y - min) / cellSize);
+        r = Math.floor((y - min) / cellSize);
         line = '';
         for (x = 0; x < size; x += 1) {
           p = 1;
@@ -708,7 +709,7 @@ var qrcode = function() {
         }
 
         for (r = 0; r < cellSize; r += 1) {
-          ascii += line + '\\n';
+          ascii += line + '\n';
         }
       }
 
@@ -1767,7 +1768,7 @@ var qrcode = function() {
       if (test.length != 2 || ( (test[0] << 8) | test[1]) != code) {
         throw 'sjis not supported.';
       }
-    }('\\u53cb', 0x9746);
+    }('\u53cb', 0x9746);
 
     var _bytes = stringToBytes(data);
 
@@ -1971,7 +1972,7 @@ var qrcode = function() {
         if (c == '=') {
           _buflen = 0;
           return -1;
-        } else if (c.match(/^\\s$/) ) {
+        } else if (c.match(/^\s$/) ) {
           // ignore if whitespace.
           continue;
         }
@@ -2241,6 +2242,7 @@ var qrcode = function() {
 
   //---------------------------------------------------------------------
   // returns qrcode function.
+  //---------------------------------------------------------------------
 
   return qrcode;
 }();

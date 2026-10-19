@@ -1,4 +1,4 @@
-"""Backend do hermes-pwa, montado em /api/plugins/hermes-pwa/.
+"""Backend do treg-pwa (versão independente do hermes-pwa), montado em /api/plugins/treg-pwa/.
 
 Duas responsabilidades:
   1. Servir o app (index.html, app.js, app.css, manifest, service worker, ícones, QR).
@@ -26,6 +26,8 @@ _HERE = Path(__file__).resolve().parent
 _PWA = _HERE / "pwa"
 _STATIC = {
     "app.js": ("application/javascript; charset=utf-8", _PWA / "app.js"),
+    "ui-utils.js": ("application/javascript; charset=utf-8", _PWA / "ui-utils.js"),
+    "hermes-api.js": ("application/javascript; charset=utf-8", _PWA / "hermes-api.js"),
     "app.css": ("text/css; charset=utf-8", _PWA / "app.css"),
     "sw.js": ("application/javascript; charset=utf-8", _PWA / "sw.js"),
     "icon.svg": ("image/svg+xml", _PWA / "icon.svg"),
@@ -37,7 +39,8 @@ _STATIC = {
 # ── gateway API server ───────────────────────────────────────────────────────────
 
 def _api_base() -> str:
-    host = (os.environ.get("HERMES_PWA_API_HOST") or "127.0.0.1").strip()
+    # Nome próprio com fallback para o legado: permite configurar a cópia sem afetar o original.
+    host = (os.environ.get("TREG_PWA_API_HOST") or os.environ.get("HERMES_PWA_API_HOST") or "127.0.0.1").strip()
     port = (os.environ.get("API_SERVER_PORT") or "8642").strip()
     return f"http://{host}:{port}"
 
@@ -49,7 +52,7 @@ def _api_key() -> str:
             from hermes_cli.config import get_env_path
             for line in Path(get_env_path()).read_text(encoding="utf-8").splitlines():
                 if line.strip().startswith("API_SERVER_KEY="):
-                    key = line.split("=", 1)[1].strip().strip("'\\\"")
+                    key = line.split("=", 1)[1].strip().strip("'\"")
                     break
         except Exception:
             pass
@@ -106,7 +109,7 @@ def index(request: Request):
 def manifest(request: Request):
     base = request.url.path.rsplit("/manifest.webmanifest", 1)[0] + "/"
     data = {
-        "name": "Hermes", "short_name": "Hermes", "description": "Chat com o Hermes Agent",
+        "name": "TREG", "short_name": "TREG", "description": "TREG: chat com o Hermes Agent (versão independente do hermes-pwa)",
         "id": base, "start_url": base, "scope": base, "display": "standalone",
         "orientation": "portrait", "background_color": "#0b1416", "theme_color": "#0f2f31",
         "lang": "pt-BR",
@@ -122,7 +125,7 @@ def manifest(request: Request):
 @router.get("/qr.svg", include_in_schema=False)
 def qr(request: Request, target: str = ""):
     """QR code (SVG) para o link do app; usado na aba PWA do painel."""
-    url = target or (str(request.base_url).rstrip("/") + "/pwa")
+    url = target or (str(request.base_url).rstrip("/") + "/treg")
     if not url.startswith(("http://", "https://")):
         raise HTTPException(status_code=400, detail="target inválido")
     try:
@@ -170,7 +173,7 @@ def profiles() -> Dict[str, Any]:
             out.append({"name": prof.name, "is_default": bool(prof.is_default), "model": prof.model or "",
                         "provider": prof.provider or "", "description": desc})
     except Exception as exc:
-        _log.warning("hermes-pwa: list_profiles falhou: %s", exc)
+        _log.warning("treg-pwa: list_profiles falhou: %s", exc)
         out = [{"name": "default", "is_default": True, "model": "", "provider": "", "description": ""}]
     multiplex = False
     try:
@@ -216,6 +219,34 @@ def me(request: Request) -> Dict[str, Any]:
     return {"user": str(user), "model": model, "api_base": _api_base()}
 
 
+@router.get("/api/capabilities")
+async def capabilities(profile: Optional[str] = None) -> Dict[str, Any]:
+    """Capacidades do gateway + extensões do plugin.
+
+    A rota é deliberadamente tolerante: versões antigas do Hermes podem não
+    expor ``/v1/capabilities``. Nesse caso devolvemos ``gateway: null`` para que
+    o cliente trate os recursos como desconhecidos, em vez de desligá-los.
+    """
+    gateway: Any = None
+    error: Optional[Dict[str, Any]] = None
+    try:
+        gateway = await _proxy_json("GET", _pfx(profile) + "/v1/capabilities")
+    except HTTPException as exc:
+        error = {"status": exc.status_code, "detail": exc.detail}
+    except Exception as exc:
+        error = {"status": 0, "detail": str(exc)}
+    return {
+        "gateway": gateway,
+        "gateway_error": error,
+        "plugin": {
+            "session_search": True,
+            "session_pin": True,
+            "run_stop": True,
+            "audio_transcribe": True,
+        },
+    }
+
+
 @router.get("/api/sessions")
 async def list_sessions(limit: int = 60, offset: int = 0, source: Optional[str] = None, profile: Optional[str] = None) -> Any:
     params: Dict[str, Any] = {"limit": max(1, min(limit, 200)), "offset": max(0, offset)}
@@ -243,6 +274,11 @@ async def patch_session(session_id: str, body: PatchSession, profile: Optional[s
 @router.delete("/api/sessions/{session_id}")
 async def delete_session(session_id: str, profile: Optional[str] = None) -> Any:
     return await _proxy_json("DELETE", f"{_pfx(profile)}/api/sessions/{session_id}")
+
+
+@router.get("/api/sessions/{session_id}")
+async def get_session(session_id: str, profile: Optional[str] = None) -> Any:
+    return await _proxy_json("GET", f"{_pfx(profile)}/api/sessions/{session_id}")
 
 
 @router.get("/api/sessions/{session_id}/messages")
@@ -339,6 +375,13 @@ async def run_status(run_id: str, profile: Optional[str] = None) -> Any:
     return await _proxy_json("GET", f"{_pfx(profile)}/v1/runs/{run_id}")
 
 
+@router.post("/api/runs/{run_id}/stop")
+async def stop_run(run_id: str, profile: Optional[str] = None) -> Any:
+    if not _RUN_ID_RE.match(run_id):
+        raise HTTPException(status_code=400, detail="execução inválida")
+    return await _proxy_json("POST", f"{_pfx(profile)}/v1/runs/{run_id}/stop", body={})
+
+
 @router.get("/api/runs/{run_id}/events")
 async def run_events(run_id: str, profile: Optional[str] = None):
     """Repassa o SSE da execução (message.delta, tool.started, approval.request, run.completed...)."""
@@ -355,12 +398,12 @@ async def run_events(run_id: str, profile: Optional[str] = None):
                                     headers={"Authorization": f"Bearer {key}", "Accept": "text/event-stream"}) as r:
                     if r.status_code >= 400:
                         text = (await r.aread())[:300].decode(errors="replace")
-                        yield f"event: error\\ndata: {json.dumps({'message': text, 'status': r.status_code})}\\n\\n".encode()
+                        yield f"event: error\ndata: {json.dumps({'message': text, 'status': r.status_code})}\n\n".encode()
                         return
                     async for chunk in r.aiter_bytes():
                         yield chunk
         except Exception as exc:
-            yield f"event: error\\ndata: {json.dumps({'message': str(exc)})}\\n\\n".encode()
+            yield f"event: error\ndata: {json.dumps({'message': str(exc)})}\n\n".encode()
 
     return StreamingResponse(gen(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
@@ -392,12 +435,12 @@ async def chat_stream(session_id: str, body: ChatBody, profile: Optional[str] = 
                                     json={"message": msg}) as r:
                     if r.status_code >= 400:
                         detail = (await r.aread()).decode("utf-8", "replace")[:400]
-                        yield f"event: error\\ndata: {json.dumps({'message': detail, 'status': r.status_code})}\\n\\n".encode()
+                        yield f"event: error\ndata: {json.dumps({'message': detail, 'status': r.status_code})}\n\n".encode()
                         return
                     async for chunk in r.aiter_bytes():
                         yield chunk
         except Exception as exc:
-            yield f"event: error\\ndata: {json.dumps({'message': str(exc)})}\\n\\n".encode()
+            yield f"event: error\ndata: {json.dumps({'message': str(exc)})}\n\n".encode()
 
     return StreamingResponse(gen(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
@@ -492,7 +535,7 @@ def approvals_set(body: ApprovalModeBody, profile: Optional[str] = None) -> Dict
     except HTTPException:
         raise
     except Exception as exc:
-        _log.exception("hermes-pwa: falha ao salvar approvals.mode")
+        _log.exception("treg-pwa: falha ao salvar approvals.mode")
         raise HTTPException(status_code=500, detail=f"Não foi possível salvar: {exc}")
 
 
@@ -588,7 +631,7 @@ async def stt_save(body: SttBody) -> Dict[str, Any]:
         cfg["stt"] = stt
         save_config(cfg)
     except Exception as exc:
-        _log.exception("hermes-pwa: falha ao salvar a configuração de transcrição")
+        _log.exception("treg-pwa: falha ao salvar a configuração de transcrição")
         raise HTTPException(status_code=500, detail=f"Não foi possível salvar: {exc}")
     return _stt_status()
 

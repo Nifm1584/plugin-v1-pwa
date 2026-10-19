@@ -1,9 +1,9 @@
-/* hermes-pwa service worker: guarda a casca do app para abrir mesmo sem rede e mostrar a tela de
+/* treg-pwa service worker: guarda a casca do app para abrir mesmo sem rede e mostrar a tela de
    login quando a sessão do dashboard expirou (401). Nada de API é cacheado.
    A casca é buscada primeiro na rede: uma atualização do plugin aparece na abertura seguinte. */
-const VERSION = "hermes-pwa-v12";
-const SHELL = ["./", "app.js", "app.css", "manifest.webmanifest", "icon.svg", "icon-192.png", "icon-512.png"];
-const BASE = new URL("./", self.location.href).pathname;   // /api/plugins/hermes-pwa/
+const VERSION = "treg-pwa-v3";
+const SHELL = ["./", "app.js", "ui-utils.js", "hermes-api.js", "app.css", "manifest.webmanifest", "icon.svg", "icon-192.png", "icon-512.png"];
+const BASE = new URL("./", self.location.href).pathname;   // /api/plugins/treg-pwa/
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL.map((u) => new Request(u, { cache: "reload" })))).then(() => self.skipWaiting()));

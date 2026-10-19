@@ -11,13 +11,34 @@
 |---|---------|----------|
 | 1 | [01-arquitetura-e-funcionamento.md](01-arquitetura-e-funcionamento.md) | Arquitetura, tecnologias, estrutura, fluxos, mapa de componentes |
 | 2 | [02-inventario-de-funcionalidades.md](02-inventario-de-funcionalidades.md) | Funcionalidades por estado (confirmada/parcial/documentada/não encontrada) |
-| 3 | [03-auditoria-interface-mobile.md](03-auditoria-interface-mobile.md) | Frontend, responsividade, legibilidade, primeira conversa e propostas visuais |
-| 4 | [04-integracao-hermes-api.md](04-integracao-hermes-api.md) | APIs, hooks, eventos, autenticação, sessões e compatibilidade |
-| 5 | [05-seguranca-e-privacidade.md](05-seguranca-e-privacidade.md) | Riscos, armazenamento, comunicação, cache e dependências |
-| 6 | [06-qualidade-e-testes.md](06-qualidade-e-testes.md) | Qualidade do código, desempenho, testes e validação |
-| 7 | [07-plano-de-evolucao.md](07-plano-de-evolucao.md) | Plano faseado de melhorias, incluindo interface, avatares, menus e temas |
-| 8 | [08-github-e-distribuicao.md](08-github-e-distribuicao.md) | Cópia independente, nomenclatura, licença, instalação e riscos de conflito |
-| 9 | [09-evidencias-e-pendencias.md](09-evidencias-e-pendencias.md) | Arquivos analisados, evidências, lacunas, hipóteses e pendências |
+| 3 | [03-auditoria-interface-mobile.md](03-auditoria-interface-mobile.md) | Frontend mobile, legibilidade, primeira conversa, propostas visuais |
+| 4 | [04-integracao-hermes-api.md](04-integracao-hermes-api.md) | APIs/hooks/eventos do Hermes, tabela de classificação, compatibilidade |
+| 5 | [05-seguranca-e-privacidade.md](05-seguranca-e-privacidade.md) | Riscos estáticos: auth, XSS, upload, cache, segredos |
+| 6 | [06-qualidade-e-testes.md](06-qualidade-e-testes.md) | Qualidade, desempenho, manutenção, testes existentes |
+| 7 | [07-plano-de-evolucao.md](07-plano-de-evolucao.md) | Plano faseado (interface, avatares, menus, temas) com matriz por melhoria |
+| 8 | [08-github-e-distribuicao.md](08-github-e-distribuicao.md) | Cópia independente: nomes, rotas, licença, conflitos |
+| 9 | [09-evidencias-e-pendencias.md](09-evidencias-e-pendencias.md) | Arquivos analisados, evidências, lacunas, hipóteses, pendências de execução |
+
+### Documentos e capturas adicionais desta branch
+
+| Arquivo | Conteúdo |
+|---|---|
+| [10-validacao-versao-estavel-c7.md](10-validacao-versao-estavel-c7.md) | Tag, Release, CI e validação da versão estável C7 |
+| [13-fase-c4-auditoria-publicacao-e-vps.md](13-fase-c4-auditoria-publicacao-e-vps.md) | Auditoria da publicação e do impacto na VPS |
+| [16-fase-c7-conferencia-exata-local-github.md](16-fase-c7-conferencia-exata-local-github.md) | Conferência local × GitHub da fase C7 |
+| [17-levantamento-visual-treg-pwa.md](17-levantamento-visual-treg-pwa.md) | Levantamento visual inicial e referências consultadas |
+| [18-auditoria-visual-funcional-treg-pwa.md](18-auditoria-visual-funcional-treg-pwa.md) | Auditoria funcional, limitação do Browser MCP e prints manuais do TREG |
+| [19-analise-prints-whatsapp.md](19-analise-prints-whatsapp.md) | Análise dos três prints manuais do WhatsApp e matriz de compatibilidade |
+| [20-inventario-final-sincronizacao.md](20-inventario-final-sincronizacao.md) | Inventário final local × GitHub, pendências e estado de preservação |
+| [21-plano-funcional-visual-treg-pwa.md](21-plano-funcional-visual-treg-pwa.md) | Plano funcional/visual com matriz de compatibilidade e prioridades P1/P2/P3 |
+| [22-implementacao-fase-5a-p1.md](22-implementacao-fase-5a-p1.md) | Implementação P1, testes, limitações e compatibilidade futura |
+| [23-revisao-tecnica-fase-5a.md](23-revisao-tecnica-fase-5a.md) | Revisão técnica, bloqueador de CI, rotas confirmadas e testes |
+| [24-correcao-bloqueador-b1-ci.md](24-correcao-bloqueador-b1-ci.md) | Correção do B1 de CI, dependências Python e resultados em ambiente limpo |
+| [25-correcao-url-base-pwa.md](25-correcao-url-base-pwa.md) | Correção da URL base das chamadas do plugin e testes de caminhos |
+| [26-implementacao-fase-5b-visual.md](26-implementacao-fase-5b-visual.md) | Identidade 1.8.0b1, cópia, temas, datas, avatares e testes visuais |
+| [prints-aplicativo-treg-pwa/README.md](prints-aplicativo-treg-pwa/README.md) | Relação das capturas do TREG PWA |
+
+> **Privacidade:** as três capturas manuais do WhatsApp analisadas no relatório 19 não foram publicadas por conterem nomes, telefone e conteúdo de conversas privadas. Elas permanecem no workspace local.
 
 ## Resumo executivo
 

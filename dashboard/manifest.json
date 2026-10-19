@@ -1,10 +1,10 @@
 {
-  "name": "hermes-pwa",
-  "label": "PWA",
-  "description": "App móvel do Hermes: chat limpo, troca rápida de sessões, instalável no celular.",
+  "name": "treg-pwa",
+  "label": "TREG",
+  "description": "TREG PWA 1.8.0b1 (Fase 5B — teste visual): app móvel do Hermes com cópia de mensagens, datas, temas e identidade TREG.",
   "icon": "MessageSquare",
-  "version": "1.7.1",
-  "tab": { "path": "/pwa", "position": "after:chat" },
+  "version": "1.8.0b1",
+  "tab": { "path": "/treg", "position": "after:chat" },
   "entry": "dist/index.js",
   "css": "dist/style.css",
   "api": "plugin_api.py"
