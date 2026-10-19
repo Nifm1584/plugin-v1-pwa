@@ -11,13 +11,27 @@
 |---|---------|----------|
 | 1 | [01-arquitetura-e-funcionamento.md](01-arquitetura-e-funcionamento.md) | Arquitetura, tecnologias, estrutura, fluxos, mapa de componentes |
 | 2 | [02-inventario-de-funcionalidades.md](02-inventario-de-funcionalidades.md) | Funcionalidades por estado (confirmada/parcial/documentada/não encontrada) |
-| 3 | [03-auditoria-interface-mobile.md](03-auditoria-interface-mobile.md) | Frontend, responsividade, legibilidade, primeira conversa e propostas visuais |
-| 4 | [04-integracao-hermes-api.md](04-integracao-hermes-api.md) | APIs, hooks, eventos, autenticação, sessões e compatibilidade |
-| 5 | [05-seguranca-e-privacidade.md](05-seguranca-e-privacidade.md) | Riscos, armazenamento, comunicação, cache e dependências |
-| 6 | [06-qualidade-e-testes.md](06-qualidade-e-testes.md) | Qualidade do código, desempenho, testes e validação |
-| 7 | [07-plano-de-evolucao.md](07-plano-de-evolucao.md) | Plano faseado de melhorias, incluindo interface, avatares, menus e temas |
-| 8 | [08-github-e-distribuicao.md](08-github-e-distribuicao.md) | Cópia independente, nomenclatura, licença, instalação e riscos de conflito |
-| 9 | [09-evidencias-e-pendencias.md](09-evidencias-e-pendencias.md) | Arquivos analisados, evidências, lacunas, hipóteses e pendências |
+| 3 | [03-auditoria-interface-mobile.md](03-auditoria-interface-mobile.md) | Frontend mobile, legibilidade, primeira conversa, propostas visuais |
+| 4 | [04-integracao-hermes-api.md](04-integracao-hermes-api.md) | APIs/hooks/eventos do Hermes, tabela de classificação, compatibilidade |
+| 5 | [05-seguranca-e-privacidade.md](05-seguranca-e-privacidade.md) | Riscos estáticos: auth, XSS, upload, cache, segredos |
+| 6 | [06-qualidade-e-testes.md](06-qualidade-e-testes.md) | Qualidade, desempenho, manutenção, testes existentes |
+| 7 | [07-plano-de-evolucao.md](07-plano-de-evolucao.md) | Plano faseado (interface, avatares, menus, temas) com matriz por melhoria |
+| 8 | [08-github-e-distribuicao.md](08-github-e-distribuicao.md) | Cópia independente: nomes, rotas, licença, conflitos |
+| 9 | [09-evidencias-e-pendencias.md](09-evidencias-e-pendencias.md) | Arquivos analisados, evidências, lacunas, hipóteses, pendências de execução |
+
+### Documentos e capturas adicionais desta branch
+
+| Arquivo | Conteúdo |
+|---|---|
+| [10-validacao-versao-estavel-c7.md](10-validacao-versao-estavel-c7.md) | Tag, Release, CI e validação da versão estável C7 |
+| [13-fase-c4-auditoria-publicacao-e-vps.md](13-fase-c4-auditoria-publicacao-e-vps.md) | Auditoria da publicação e do impacto na VPS |
+| [16-fase-c7-conferencia-exata-local-github.md](16-fase-c7-conferencia-exata-local-github.md) | Conferência local × GitHub da fase C7 |
+| [17-levantamento-visual-treg-pwa.md](17-levantamento-visual-treg-pwa.md) | Levantamento visual inicial e referências consultadas |
+| [18-auditoria-visual-funcional-treg-pwa.md](18-auditoria-visual-funcional-treg-pwa.md) | Auditoria funcional, limitação do Browser MCP e prints manuais do TREG |
+| [19-analise-prints-whatsapp.md](19-analise-prints-whatsapp.md) | Análise dos três prints manuais do WhatsApp e matriz de compatibilidade |
+| [prints-aplicativo-treg-pwa/README.md](prints-aplicativo-treg-pwa/README.md) | Relação das capturas do TREG PWA |
+
+> **Privacidade:** as três capturas manuais do WhatsApp analisadas no relatório 19 não foram publicadas por conterem nomes, telefone e conteúdo de conversas privadas. Elas permanecem no workspace local.
 
 ## Resumo executivo
 
