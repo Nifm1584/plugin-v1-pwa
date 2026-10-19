@@ -93,7 +93,7 @@ Motivo: contêm nomes, telefone e conteúdo de conversas privadas. A análise es
 |---|---|---|
 | `main` | `07cacfeb7a5af3650a1bdf3335af2be3262806aa` | Preservada |
 | `fix/treg-pwa-c7-qrcode-fix` | `6218f0fd25a2047b5caba09cf854af74058db03d` | Preservada; base da versão estável |
-| `docs/fase-4-analise-visual-e-prints` | `ac8d4fd557643e6b36ddddcd1d21aaf2c5a6ae43` | Publicada nesta fase; contém os relatórios 10, 13, 16, 17, 18 e 19 e as capturas do TREG |
+| `docs/fase-4-analise-visual-e-prints` | `ac8d4fd...` (base) + commit deste relatório (HEAD) | Publicada nesta fase; contém os relatórios 10, 13, 16, 17, 18, 19 e 20 e as capturas do TREG |
 | `docs/fase-1-versao-estavel-c7` | `5c892ef5ba1ce57ce9cc36292bc409e7086f3882` | Preservada |
 | `docs/fase-3-checklist-roadmap` | `4c066feb1191b37bf9d307e33b1249d9ca6627e7` | Preservada |
 | `docs/validacao-versao-estavel-c7` | `9ce1c4a99c73465f9db61dff25198c98b388e99d` | Preservada |
