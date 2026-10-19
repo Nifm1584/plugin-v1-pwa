@@ -21,7 +21,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install Python test dependencies
-        run: python -m pip install --disable-pip-version-check pytest pyyaml
+        run: python -m pip install --disable-pip-version-check pytest pyyaml fastapi pydantic
       - name: Install Node test dependencies
         working-directory: tests
         run: npm ci --ignore-scripts --no-audit --no-fund
