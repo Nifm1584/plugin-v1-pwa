@@ -65,6 +65,14 @@ plugin-v1-pwa/
 - Para múltiplos agentes no seletor: gateway multiplexado + mesma chave por perfil
   (detalhes na documentação original preservada abaixo).
 
+## Instalar uma versão específica pelo Hermes
+
+Para pedir ao Hermes que instale uma versão exata do plugin, use o [template de prompt para instalação por versão](PROMPT-INSTALACAO-VERSAO-HERMES.md). O tutorial explica quais campos substituir, como conferir o SHA completo do commit e quais verificações exigir depois da instalação.
+
+**Regra importante:** informe o commit exato da versão desejada. Não deixe o Hermes escolher automaticamente `main` ou `latest`. Antes de instalar, confirme que a tag/Release e o SHA correspondem ao código que você quer usar.
+
+---
+
 ## Instalação (código no estado original — identidade independente ainda não aplicada)
 
 ```bash
