@@ -1,6 +1,6 @@
 # Template: pedir ao Hermes para instalar uma versão específica do TREG PWA
 
-Use este modelo para pedir ao Hermes que instale **uma versão exata** do plugin. A ideia é não deixar o Hermes escolher automaticamente a versão mais recente da branch `main).
+Use este modelo para pedir ao Hermes que instale **uma versão exata** do plugin. A ideia é não deixar o Hermes escolher automaticamente a versão mais recente da branch `main`.
 
 ## 1. O que substituir antes de enviar
 
@@ -33,7 +33,7 @@ Quero instalar uma versão específica do plugin TREG PWA. Siga os dados abaixo 
 ### Procedimento obrigatório
 
 1. Antes de instalar, confira a ajuda do comando oficial de instalação de plugins disponível nesta instalação do Hermes.
-2. Instale pelo mecanismo oficial do Hermes, fixando a referência no SHA completo informado acima. Não use a branch `main`, `latest) nem uma referência móvel no lugar do SHA.
+2. Instale pelo mecanismo oficial do Hermes, fixando a referência no SHA completo informado acima. Não use a branch `main`, `latest` nem uma referência móvel no lugar do SHA.
 3. Se o plugin já estiver instalado, verifique o estado atual e explique se a instalação substituirá arquivos existentes. Não remova nem substitua outro plugin, especialmente o plugin original `hermes-pwa`, sem autorização explícita.
 4. Não altere o núcleo do Hermes, configurações globais ou outros plugins para contornar problemas.
 5. Depois da instalação, verifique o resultado real: versão registrada, ID do plugin, diretório e commit/referência efetivamente instalada, quando disponíveis.
