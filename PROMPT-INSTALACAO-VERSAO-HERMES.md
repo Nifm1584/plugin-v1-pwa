@@ -25,51 +25,65 @@ Atualizar **a instalação existente** de `treg-pwa` no próprio diretório, pre
 
 ## Regra crítica sobre o instalador
 
-O relatório 36 registra que o CLI inspecionado nesta instalação do Hermes **não aceita `--ref` nem `--branch` em `hermes plugins install`**. O comando genérico clona a branch padrão `main`, portanto não seleciona o código solicitado.
+O relatório 36 registrou que o CLI inspecionado naquele ambiente **não aceitava `--ref` nem `--branch`** e que o comando genérico selecionava `main`. A documentação oficial online do Hermes atualmente descreve suporte a `--ref` com SHA completo ([documentação de plugins](https://hermes-agent.nousresearch.com/docs/user-guide/features/plugins)); isso pode variar conforme a versão efetivamente instalada.
 
-Por isso, **não execute** o comando genérico de instalação do plugin, nem tente contornar o problema usando `--force`, outro SHA ou uma referência móvel. O método definido abaixo é atualizar o checkout Git que já existe, depois de comprovar que isso é seguro.
+Portanto, consulte a ajuda **local** antes de escolher o método. Não presuma suporte só porque aparece na documentação online, e não execute um comando com `--ref` sem que a ajuda local o confirme. Em qualquer cenário, **não use `git clone` apontando para `/opt/data/plugins/treg-pwa`**, pois esse diretório já existe.
+
+- Se a ajuda local confirmar `--ref`, a origem existente for o mesmo repositório e todas as verificações de segurança abaixo passarem, prefira o mecanismo oficial do Hermes fixando o SHA completo.
+- Se a ajuda local não oferecer `--ref`, só use o checkout Git existente se a árvore estiver limpa, `origin` for o repositório correto e não houver metadados de instalação que ficariam desatualizados. Se isso não puder ser confirmado, pare e reporte o bloqueio.
+- Nunca use o comando genérico sem SHA, nem `main`, `latest` ou uma branch móvel como substituto do commit solicitado.
 
 ## Etapa 1 — Inspeção somente leitura antes de mudar qualquer coisa
 
-1. Confirme que está no ambiente Hermes esperado e que `HERMES_HOME=/opt/data`.
-2. Confirme que `/opt/data/plugins/treg-pwa` existe e que o caminho `/opt/data/plugins/hermes-pwa` continua sendo a instalação original separada.
-3. Confirme que `/opt/data/plugins/treg-pwa` é um checkout Git e que o remoto `origin` aponta para `https://github.com/Nifm1584/plugin-v1-pwa.git` (ou a URL HTTPS equivalente desse mesmo repositório).
-4. Registre o SHA atualmente instalado (`git rev-parse HEAD`), a branch/estado atual, os remotos e a saída de `git status --short`.
-5. Inspecione também os arquivos não rastreados e ignorados presentes no diretório. Não presuma que são descartáveis.
-6. Verifique, com os comandos de consulta disponíveis nesta instalação, se `treg-pwa` está habilitado e se o plugin original `hermes-pwa` está presente. Não altere o estado de habilitação nesta etapa.
-7. Consulte o estado e os logs relevantes do dashboard, sem reiniciar serviços.
+1. Confirme que está no ambiente Hermes esperado, registre a versão do Hermes e confirme `HERMES_HOME=/opt/data`.
+2. Consulte a ajuda local de `HERMES_HOME=/opt/data /opt/hermes/bin/hermes plugins install --help` e anote se `--ref` é aceito. Essa consulta não altera a instalação.
+3. Confirme que `/opt/data/plugins/treg-pwa` existe e que `/opt/data/plugins/hermes-pwa` continua sendo a instalação original separada.
+4. Confirme que `/opt/data/plugins/treg-pwa` é um checkout Git e que o remoto `origin` aponta para `https://github.com/Nifm1584/plugin-v1-pwa.git` (ou URL HTTPS equivalente do mesmo repositório).
+5. Registre o SHA instalado (`git rev-parse HEAD`), branch/estado atual, remotos e a saída de `git status --short`.
+6. Inspecione arquivos não rastreados e ignorados sem apagá-los; classifique o que for conhecido como dado persistente e pare se algo for inesperado ou não puder ser identificado.
+7. Verifique se existe metadado de instalação do Hermes, especialmente `/opt/data/plugins/.install-metadata.json` ou o caminho efetivamente usado por esta versão. Se existir, leia somente a entrada de `treg-pwa`; não a modifique manualmente. Registre origem e SHA/revisão armazenados, se disponíveis.
+8. Confirme se `treg-pwa` está habilitado e se o original `hermes-pwa` está presente. Não altere a habilitação nesta etapa.
+9. Consulte o estado e os logs do dashboard sem reiniciar serviços.
 
 **Pare imediatamente, sem atualizar, se qualquer condição abaixo ocorrer:**
 
 - o caminho do plugin não existir ou não for o esperado;
-- o diretório não for um checkout Git;
-- o remoto não corresponder ao repositório acima;
-- houver alterações rastreadas, arquivos não rastreados, arquivos ignorados inesperados ou dados locais cuja função não possa ser determinada;
+- o diretório não for um checkout Git ou o remoto não corresponder ao repositório acima;
+- houver alterações rastreadas, arquivos não rastreados/ignorados inesperados ou dados locais cuja função não possa ser determinada;
+- a origem registrada nos metadados do Hermes divergir do repositório, ou uma atualização manual deixar metadados de revisão desatualizados;
 - o estado Git estiver divergente, incompleto ou não for possível confirmar a origem;
 - a instalação original `hermes-pwa` estiver ausente ou parecer ter sido modificada;
 - não houver como confirmar que o checkout de destino é alcançável a partir do histórico atual sem descartar dados.
 
 Não tente resolver essas condições apagando arquivos, restaurando o diretório, criando outro clone ou reinstalando o plugin. Informe as evidências e aguarde.
 
-## Etapa 2 — Buscar e conferir o commit exato
+## Etapa 2 — Escolher a atualização segura e confirmar o SHA
 
-Só prossiga se a Etapa 1 demonstrar que o checkout está seguro, limpo e sem dados locais inesperados:
+Só prossiga se as verificações iniciais mostrarem que a instalação, o histórico e os dados locais estão seguros.
 
-1. No diretório `/opt/data/plugins/treg-pwa`, atualize apenas as referências Git:
+### Caminho A — O CLI local aceita `--ref`
 
-   ```bash
-   git fetch --no-tags origin feat/treg-pwa-preparacao-validacao-real
-   ```
+Use este caminho somente se a ajuda local confirmar explicitamente `--ref`, o plugin instalado tiver a mesma origem `Nifm1584/plugin-v1-pwa`, o estado Git estiver limpo e o TREG já estiver habilitado. Execute:
 
-2. Confirme que o commit `1c112805bbfae6f56ae936d323dd5ecd70707a3d` existe localmente após o fetch.
-3. Confirme que o commit atualmente instalado é ancestral do SHA de destino. Se não for possível confirmar essa relação, pare e reporte a divergência.
-4. Confirme novamente que a árvore de trabalho está limpa antes de trocar a referência.
+```bash
+HERMES_HOME=/opt/data /opt/hermes/bin/hermes plugins install Nifm1584/plugin-v1-pwa --force --ref 1c112805bbfae6f56ae936d323dd5ecd70707a3d --enable
+```
 
-Não use `git reset --hard`, `git clean`, `rm -rf`, não apague nem recrie `/opt/data/plugins/treg-pwa`, não use `git clone` sobre esse diretório, não faça stash e não force nenhuma operação.
+Não execute este comando se a ajuda local não listar `--ref`, se a origem não corresponder, se o plugin estiver desabilitado ou se houver alterações/dados não esclarecidos. Depois do comando, confirme que o SHA efetivamente instalado é exatamente `1c112805bbfae6f56ae936d323dd5ecd70707a3d` e confira os metadados do Hermes para a revisão instalada.
 
-## Etapa 3 — Atualizar a instalação existente
+### Caminho B — O CLI local não aceita `--ref`
 
-Somente após todas as verificações anteriores passarem, no próprio checkout existente:
+Use este caminho somente se o diretório existente for um checkout Git correto e limpo, o SHA atualmente instalado for ancestral do destino e **não existir metadado do Hermes que fique desatualizado com uma troca manual de checkout**. Se houver `/opt/data/plugins/.install-metadata.json` ou equivalente e não for possível atualizar sua revisão por um procedimento oficialmente suportado nessa versão, pare e reporte o bloqueio; não edite o metadado manualmente.
+
+No diretório `/opt/data/plugins/treg-pwa`, atualize apenas as referências:
+
+```bash
+git fetch --no-tags origin feat/treg-pwa-preparacao-validacao-real
+```
+
+Confirme que o commit `1c112805bbfae6f56ae936d323dd5ecd70707a3d` existe localmente e que o commit instalado é ancestral dele. Se não for possível confirmar isso, pare. Confirme novamente que a árvore está limpa.
+
+Só então, no checkout existente:
 
 ```bash
 git checkout --detach 1c112805bbfae6f56ae936d323dd5ecd70707a3d
@@ -83,6 +97,10 @@ O resultado de `git rev-parse HEAD` deve ser exatamente:
 1c112805bbfae6f56ae936d323dd5ecd70707a3d
 ```
 
+### Proibições nos dois caminhos
+
+Não use o instalador genérico sem SHA; não instale `main`; não apague nem recrie `/opt/data/plugins/treg-pwa`; não execute `git clone` apontando para o diretório existente; não use `git reset --hard`, `git clean`, `rm -rf`, stash ou outras operações de descarte. Não escolha outro SHA se o solicitado não puder ser aplicado.
+
 Confira também, sem modificar arquivos:
 
 - `plugin.yaml`: `name: treg-pwa` e `version: 1.8.0b1`;
@@ -94,6 +112,8 @@ Confira também, sem modificar arquivos:
 A troca de código não deve modificar o conteúdo de `/opt/data` fora do diretório do plugin, nem bancos de sessões, histórico do Hermes, configurações globais, `.env`, credenciais ou estado persistente do navegador. Não habilite/desabilite plugins automaticamente para contornar erro. Se o estado de habilitação anterior mudar ou não puder ser confirmado, registre isso e pare.
 
 ## Etapa 4 — Recarregar somente o dashboard
+
+Antes de reiniciar, confirme que o SHA final aplicado é exatamente o solicitado e que o estado/metadados da instalação não divergem. Se qualquer verificação falhar, não reinicie serviços; registre o problema e pare.
 
 O procedimento já utilizado neste ambiente foi reiniciar apenas o serviço do dashboard. Antes de executar, confirme que `/run/service/dashboard` existe e corresponde ao dashboard desta instalação.
 
