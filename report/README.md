@@ -30,9 +30,10 @@
 | [18-auditoria-visual-funcional-treg-pwa.md](18-auditoria-visual-funcional-treg-pwa.md) | Auditoria funcional, limitação do Browser MCP e prints manuais do TREG |
 | [19-analise-prints-whatsapp.md](19-analise-prints-whatsapp.md) | Análise dos três prints manuais do WhatsApp e matriz de compatibilidade |
 | [20-inventario-final-sincronizacao.md](20-inventario-final-sincronizacao.md) | Inventário final local × GitHub, pendências e estado de preservação |
+| [21-fase-5b-encerramento.md](21-fase-5b-encerramento.md) | Encerramento da Fase 5B: capturas publicadas, verificações e estado final |
 | [prints-aplicativo-treg-pwa/README.md](prints-aplicativo-treg-pwa/README.md) | Relação das capturas do TREG PWA |
 
-> **Privacidade:** as três capturas manuais do WhatsApp analisadas no relatório 19 não foram publicadas por conterem nomes, telefone e conteúdo de conversas privadas. Elas permanecem no workspace local.
+> **Privacidade:** as três capturas manuais do WhatsApp analisadas no relatório 19 não foram publicadas por conterem nomes, telefone e conteúdo de conversas privadas. Elas permanecem no workspace local. A captura `02-tela-instalacao-qr.png` foi publicada com o nome de usuário e a chave parcialmente mascarada redigidos.
 
 ## Resumo executivo
 
