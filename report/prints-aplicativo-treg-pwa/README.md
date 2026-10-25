@@ -1,8 +1,8 @@
 # Capturas — aplicativo TREG PWA
 
-Pasta conferida em 2026-10-18. Contém 11 imagens, todas abertas e visualizadas diretamente:
+Pasta conferida em 2026-10-18. Contém 11 imagens, todas abertas e visualizadas diretamente. As 11 capturas foram publicadas nesta branch em 2026-10-24.
 
-> **Publicação de 2026-10-19:** na branch do GitHub, `02-tela-instalacao-qr.png` foi publicada com o nome de usuário e a chave parcialmente mascarada redigidos. O original permanece apenas no workspace local. As capturas manuais do WhatsApp não fazem parte desta pasta e não foram publicadas.
+> **Privacidade:** `02-tela-instalacao-qr.png` foi publicada em versão redigida, com o nome de usuário e a chave parcialmente mascarada cobertos. O original permanece apenas no workspace local. As capturas manuais do WhatsApp não fazem parte desta pasta e não foram publicadas.
 
 
 - 9 capturas manuais do usuário em celular: `Screenshot_1.png` a `Screenshot_9.png`;
