@@ -68,6 +68,34 @@ async function testSearchAndFallbackSignal() {
   );
 }
 
+function testSearchMergeAndTitlePersistence() {
+  const local = [
+    { id: "s1", profile: "work", title: "Nome renomeado", preview: "prévia local", last_active: 20 },
+    { id: "s3", profile: "work", title: "Só local", preview: "local", last_active: 10 }
+  ];
+  const remote = [
+    { id: "s1", session_id: "s1", title: "Nome antigo", snippet: "trecho remoto", last_active: 30 },
+    { id: "s2", session_id: "s2", title: "Só remota", snippet: "remoto" }
+  ];
+  const merged = TregApi.mergeSearchSessions(local, remote, "work");
+  assert.deepEqual(merged.map(function (s) { return s.id; }), ["s1", "s3", "s2"]);
+  assert.equal(merged[0].title, "Nome renomeado", "o título local renomeado deve prevalecer");
+  assert.equal(merged[0].snippet, "trecho remoto", "o trecho remoto deve ser preservado");
+  assert.equal(merged[0].profile, "work");
+  assert.equal(merged[0].search, true);
+  assert.equal(merged[1].title, "Só local");
+  assert.equal(merged[2].title, "Só remota");
+  assert.equal(merged[2].profile, "work");
+  assert.equal(merged.length, 3, "não deve duplicar sessões");
+
+  const preserved = TregApi.mergeSessions(
+    [{ id: "s4", title: "Nome salvo", preview: "antiga" }],
+    [{ id: "s4", title: "", preview: "nova" }]
+  );
+  assert.equal(preserved[0].title, "Nome salvo", "título local não deve ser apagado por resposta vazia");
+  assert.equal(preserved[0].preview, "nova");
+}
+
 async function testMutationsAndCapabilities() {
   calls = [];
   const api = TregApi.create({
@@ -192,6 +220,7 @@ async function testEventStream() {
 async function main() {
   await testSessionsAndPagination();
   await testSearchAndFallbackSignal();
+  testSearchMergeAndTitlePersistence();
   await testMutationsAndCapabilities();
   await testCreateSession();
   await testLegacyCapabilitiesAndAuth();

@@ -6,7 +6,7 @@
   var ui = window.TregUi;
   var api = window.TregApi && window.TregApi.create({ base: API, origin: location.origin, pageUrl: location.href, timeout: 30000 });
   var themeMedia = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : { matches: false };
-  var state = { sessions: [], sessionsOffset: 0, sessionsHasMore: false, sessionsLoading: false, sessionsError: null, searchResults: null, searchQuery: "", searchLoading: false, searchError: null, searchAvailable: true, searchSeq: 0, capabilities: null, current: null, messages: [], messagesLoading: false, messagesError: null, streaming: false, filter: "", pollList: null, pollMsgs: null, model: {}, attachments: [], recorder: null, recChunks: [], recTimer: null, recStart: 0, recCancel: false, profile: "default", profiles: [], multiplex: false, runCtx: null, themePref: "auto" };
+  var state = { sessions: [], sessionsOffset: 0, sessionsHasMore: false, sessionsLoading: false, sessionsSeq: 0, sessionsError: null, searchResults: null, searchQuery: "", searchLoading: false, searchError: null, searchAvailable: true, searchSeq: 0, capabilities: null, current: null, messages: [], messagesLoading: false, messagesError: null, streaming: false, sending: false, micBusy: false, filter: "", pollList: null, pollMsgs: null, model: {}, attachments: [], recorder: null, recChunks: [], recTimer: null, recStart: 0, recCancel: false, profile: "default", profiles: [], multiplex: false, runCtx: null, themePref: "auto" };
 
   // ───────────────────────── util
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
@@ -139,20 +139,42 @@
     }
     el.classList.remove("hidden");
   }
-  function localSearch(q) {
+  function sessionMatches(s, q) {
     var needle = String(q || "").toLowerCase();
+    if (!needle) return true;
+    return (sessionTitle(s) + " " + (s.preview || "") + " " + sourceLabel(s.source)).toLowerCase().indexOf(needle) >= 0;
+  }
+  function sortSessions(items) {
+    return items.slice().sort(function (a, b) {
+      return ((b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)) ||
+        ((b.last_active || b.started_at || 0) - (a.last_active || a.started_at || 0));
+    });
+  }
+  function localSearch(q) {
     return state.sessions.filter(function (s) { return !s.hidden && !s.archived; })
-      .filter(function (s) { return (sessionTitle(s) + " " + (s.preview || "") + " " + sourceLabel(s.source)).toLowerCase().indexOf(needle) >= 0; })
-      .map(function (s) { return Object.assign({}, s, { search: true, snippet: s.preview || "", preview: s.preview || "" }); });
+      .filter(function (s) { return sessionMatches(s, q); })
+      .map(function (s) {
+        return Object.assign({}, s, {
+          search: true,
+          snippet: s.preview || "",
+          preview: s.preview || "",
+          profile: s.profile || state.profile
+        });
+      });
+  }
+  function mergeSearchResults(localItems, remoteItems, profile) {
+    if (window.TregApi && typeof window.TregApi.mergeSearchSessions === "function") {
+      return window.TregApi.mergeSearchSessions(localItems, remoteItems, profile);
+    }
+    return window.TregApi ? window.TregApi.mergeSessions(localItems, remoteItems) : [];
   }
   function sessionListItems() {
     var q = state.searchQuery.trim();
     var searching = q.length >= 2;
-    if (searching) return (state.searchResults || []).filter(function (s) { return !s.archived; });
-    var f = q.toLowerCase();
-    return state.sessions.filter(function (s) { return !s.hidden && !s.archived; })
-      .filter(function (s) { return !f || (sessionTitle(s) + " " + (s.preview || "") + " " + sourceLabel(s.source)).toLowerCase().indexOf(f) >= 0; })
-      .sort(function (a, b) { return ((b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)) || ((b.last_active || b.started_at || 0) - (a.last_active || a.started_at || 0)); });
+    if (searching) {
+      return sortSessions((state.searchResults || []).filter(function (s) { return !s.archived; }));
+    }
+    return sortSessions(state.sessions.filter(function (s) { return !s.hidden && !s.archived && sessionMatches(s, q); }));
   }
   function renderSessions() {
     var ul = $("sessions");
@@ -191,23 +213,26 @@
   }
   function loadSessions(silent, reset) {
     if (!api) return Promise.resolve();
-    if (state.sessionsLoading) return Promise.resolve();
+    if (state.sessionsLoading && reset === false) return Promise.resolve();
     if (reset !== false) { state.sessions = []; state.sessionsOffset = 0; state.sessionsHasMore = false; }
     var prof = state.profile;
     var offset = state.sessionsOffset;
+    var seq = ++state.sessionsSeq;
     state.sessionsLoading = true; state.sessionsError = null;
     if (!silent) renderSessions();
     return api.getSessions({ limit: 80, offset: offset, profile: prof }).then(function (d) {
-      if (prof !== state.profile) return;
+      if (seq !== state.sessionsSeq || prof !== state.profile) return;
       var items = d.items.map(function (item) { item.profile = prof; return item; });
       state.sessions = window.TregApi.mergeSessions(state.sessions, items);
       state.sessionsOffset = offset + 80;
       state.sessionsHasMore = !!d.hasMore && d.items.length > 0;
     }).catch(function (e) {
+      if (seq !== state.sessionsSeq || prof !== state.profile) return;
       if (e.code === "auth" || e.status === 401 || e.status === 403) { showLogin(); return; }
       state.sessionsError = "Não foi possível carregar as conversas. " + (e.message || "Tente novamente.");
       if (!silent) toast("Erro ao listar: " + e.message);
     }).then(function () {
+      if (seq !== state.sessionsSeq || prof !== state.profile) return;
       state.sessionsLoading = false;
       if (state.current && state.current.profile === prof && !state.streaming && !state.messagesLoading) loadMessages(true);
       renderSessions();
@@ -223,19 +248,23 @@
   function performSearch(q) {
     q = String(q || "").trim();
     if (q.length < 2) { state.searchResults = null; state.searchError = null; state.searchLoading = false; renderSessions(); return; }
+    var local = localSearch(q);
+    state.searchResults = mergeSearchResults(local, [], state.profile);
     if (!state.searchAvailable) {
-      state.searchResults = localSearch(q); state.searchLoading = false;
+      state.searchLoading = false;
       state.searchError = null; renderSessions(); return;
     }
+    var prof = state.profile;
     var seq = ++state.searchSeq;
     state.searchLoading = true; state.searchError = null; renderSessions();
-    api.searchHistory(q, { profile: state.profile, limit: 50 }).then(function (d) {
-      if (seq !== state.searchSeq) return;
-      state.searchResults = window.TregApi.mergeSessions([], d.items); state.searchAvailable = true;
+    api.searchHistory(q, { profile: prof, limit: 50 }).then(function (d) {
+      if (seq !== state.searchSeq || prof !== state.profile) return;
+      state.searchResults = mergeSearchResults(local, d.items, prof);
+      state.searchAvailable = true;
     }).catch(function (e) {
-      if (seq !== state.searchSeq) return;
+      if (seq !== state.searchSeq || prof !== state.profile) return;
       if (e.code === "auth" || e.status === 401 || e.status === 403) { showLogin(); return; }
-      state.searchResults = localSearch(q);
+      state.searchResults = mergeSearchResults(local, [], prof);
       if (e.code === "not_found" || e.code === "unsupported") {
         state.searchAvailable = false;
         state.searchError = "Busca no histórico indisponível nesta versão do Hermes.";
@@ -243,21 +272,49 @@
         state.searchError = "Falha na busca no histórico: " + (e.message || "tente novamente") + ".";
       }
     }).then(function () {
-      if (seq !== state.searchSeq) return;
+      if (seq !== state.searchSeq || prof !== state.profile) return;
       state.searchLoading = false; renderSessions();
     });
   }
+  function clearSearchState() {
+    clearTimeout(searchTimer);
+    state.searchQuery = ""; state.searchResults = null; state.searchError = null;
+    state.searchLoading = false; state.searchSeq += 1; state.filter = "";
+    $("search").value = "";
+  }
+  function openSearch() {
+    $("search-row").classList.remove("hidden");
+    $("btn-search").setAttribute("aria-expanded", "true");
+    setTimeout(function () { $("search").focus(); }, 30);
+  }
+  function closeSearch(reset) {
+    if (reset) { clearSearchState(); renderSessions(); }
+    $("search-row").classList.add("hidden");
+    $("btn-search").setAttribute("aria-expanded", "false");
+  }
+  $("btn-search").addEventListener("click", function () {
+    if ($("search-row").classList.contains("hidden")) openSearch();
+    else closeSearch(true);
+  });
   var searchTimer = null;
   $("search").addEventListener("input", function (e) {
     state.searchQuery = e.target.value;
     state.searchResults = null; state.searchError = null; state.searchSeq += 1;
     $("sessions").scrollTop = 0;
     clearTimeout(searchTimer);
-    if (state.searchQuery.trim().length < 2) {
+    var q = state.searchQuery.trim();
+    if (q.length < 2) {
       state.searchLoading = false; state.filter = state.searchQuery; renderSessions(); return;
     }
+    state.searchResults = mergeSearchResults(localSearch(q), [], state.profile);
     state.searchLoading = true; renderSessions();
     searchTimer = setTimeout(function () { performSearch(state.searchQuery); }, 350);
+  });
+  $("search").addEventListener("keydown", function (e) {
+    if (e.key !== "Escape") return;
+    e.preventDefault();
+    closeSearch(true);
+    $("btn-search").focus();
   });
   $("btn-refresh").addEventListener("click", function () { loadSessions(false, true).then(function () { toast("Atualizado"); }); });
 
@@ -430,6 +487,12 @@
     el.classList.remove("hidden");
   }
   function openSession(s) {
+    if (!s.profile) s.profile = state.profile;
+    if (!state.sessions.some(function (item) { return item.id === s.id; })) {
+      var normal = Object.assign({}, s, { search: false });
+      delete normal.snippet;
+      state.sessions = window.TregApi.mergeSessions(state.sessions, [normal]);
+    }
     state.current = s; state.messages = []; state.messagesLoading = true; state.messagesError = null;
     var chatAvatar = $("chat-avatar");
     if (chatAvatar) { chatAvatar.className = "avatar chat-avatar " + (s.source || ""); chatAvatar.textContent = avatarLabel(s); }
@@ -437,7 +500,7 @@
     $("chat-sub").textContent = (s.profile && s.profile !== "default" ? "Agente " + s.profile + " · " : "") + sourceLabel(s.source) + (s.model ? " · " + shortModel(s.model) : (function () { var pr = state.profiles.filter(function (x) { return x.name === (s.profile || "default"); })[0]; var m = (pr && pr.model) || state.model.default; return m ? " · " + shortModel(m) : ""; })());
     $("messages").innerHTML = ""; renderChatStatus(); updateStopButton();
     $("chat").classList.remove("hidden"); $("list").classList.add("hidden");
-    renderSessions();
+    renderSessions(); updateScrollButton();
     var lm = loadMessages();
     if (lm && lm.then) lm.then(resumePendingRun); else resumePendingRun();
     clearInterval(state.pollMsgs); state.pollMsgs = setInterval(function () { if (!state.streaming && state.current) loadMessages(true); }, 12000);
@@ -446,7 +509,7 @@
   function closeSession() {
     state.current = null; clearInterval(state.pollMsgs);
     state.messagesLoading = false; state.messagesError = null; renderChatStatus(); updateStopButton();
-    $("chat").classList.add("hidden"); $("list").classList.remove("hidden"); renderSessions();
+    $("chat").classList.add("hidden"); $("list").classList.remove("hidden"); updateScrollButton(); renderSessions();
   }
   $("btn-back").addEventListener("click", closeSession);
   function loadMessages(silent) {
@@ -468,7 +531,7 @@
       if (!silent) toast("Erro ao carregar: " + e.message);
     }).then(function () {
       if (seq !== state.messagesSeq) return;
-      state.messagesLoading = false; renderChatStatus();
+      state.messagesLoading = false; renderChatStatus(); updateScrollButton();
     });
   }
 
@@ -510,7 +573,109 @@
     if (!Array.isArray(c)) return [];
     return c.filter(function (p) { return p && p.type === "image_url" && p.image_url && p.image_url.url; }).map(function (p) { return p.image_url.url; });
   }
-    function addCopyAction(div, text) {
+  var voiceSeq = 0;
+  function makeVoice(v) {
+    var data = {
+      transcript: String(v && v.transcript || "").trim(),
+      pending: !!(v && v.pending),
+      note: v && v.note || ""
+    };
+    var node = document.createElement("div"); node.className = "voice";
+    var head = document.createElement("div"); head.className = "voice-head";
+    var label = document.createElement("span"); label.className = "voice-label"; label.textContent = "Áudio";
+    var menuBtn = document.createElement("button"); menuBtn.type = "button"; menuBtn.className = "voice-menu-btn";
+    menuBtn.setAttribute("aria-label", "Opções do áudio"); menuBtn.setAttribute("aria-haspopup", "menu");
+    menuBtn.setAttribute("aria-expanded", "false");
+    menuBtn.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>';
+    var menuId = "voice-menu-" + (++voiceSeq);
+    var menu = document.createElement("div"); menu.id = menuId; menu.className = "voice-menu hidden"; menu.setAttribute("role", "menu");
+    menuBtn.setAttribute("aria-controls", menuId);
+    var action = document.createElement("button"); action.type = "button"; action.setAttribute("role", "menuitem");
+    var audio = document.createElement("audio"); audio.controls = true; audio.preload = "metadata"; audio.src = v && v.src || ""; audio.setAttribute("aria-label", "Mensagem de áudio");
+    var transcriptEl = document.createElement("div"); transcriptEl.className = "transcript hidden";
+    var noteEl = document.createElement("div"); noteEl.className = "voice-note";
+
+    function updateAction() {
+      var has = !!data.transcript;
+      if (data.pending) {
+        action.disabled = true;
+        action.textContent = "Aguardando transcrição";
+        action.removeAttribute("aria-label");
+      } else if (!has) {
+        action.disabled = true;
+        action.textContent = "Transcrição indisponível";
+        action.removeAttribute("aria-label");
+      } else {
+        action.disabled = false;
+        var visible = !transcriptEl.classList.contains("hidden");
+        action.textContent = visible ? "Ocultar transcrição" : "Mostrar transcrição";
+        action.setAttribute("aria-label", action.textContent);
+      }
+    }
+
+    function render() {
+      var has = !!data.transcript;
+      transcriptEl.innerHTML = has
+        ? '<span class="tlabel">Transcrição</span>' + esc(data.transcript).replace(/\n/g, "<br>")
+        : "";
+      transcriptEl.classList.add("hidden");
+      if (has) {
+        noteEl.classList.add("hidden");
+        noteEl.textContent = "";
+      } else {
+        noteEl.textContent = data.pending ? "Transcrevendo…" : "Sem transcrição disponível";
+        noteEl.classList.remove("hidden");
+      }
+      updateAction();
+    }
+
+    menuBtn.addEventListener("click", function (event) {
+      event.stopPropagation();
+      Array.prototype.forEach.call(document.querySelectorAll(".voice-menu"), function (other) {
+        if (other === menu || other.classList.contains("hidden")) return;
+        other.classList.add("hidden");
+        var otherBtn = other.parentNode && other.parentNode.querySelector(".voice-menu-btn");
+        if (otherBtn) otherBtn.setAttribute("aria-expanded", "false");
+      });
+      var open = menu.classList.contains("hidden");
+      menu.classList.toggle("hidden", !open);
+      menuBtn.setAttribute("aria-expanded", open ? "true" : "false");
+      updateScrollButton();
+      if (open && !action.disabled) action.focus();
+    });
+    action.addEventListener("click", function () {
+      if (action.disabled || !data.transcript) return;
+      var show = transcriptEl.classList.contains("hidden");
+      transcriptEl.classList.toggle("hidden", !show);
+      updateAction();
+      menu.classList.add("hidden");
+      menuBtn.setAttribute("aria-expanded", "false");
+      menuBtn.focus();
+      updateScrollButton();
+    });
+    menu.addEventListener("keydown", function (event) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        menu.classList.add("hidden");
+        menuBtn.setAttribute("aria-expanded", "false");
+        menuBtn.focus();
+        updateScrollButton();
+      }
+    });
+
+    head.appendChild(label); head.appendChild(menuBtn);
+    menu.appendChild(action);
+    node.appendChild(head); node.appendChild(audio); node.appendChild(menu); node.appendChild(transcriptEl); node.appendChild(noteEl);
+    render();
+    node.updateVoice = function (next) {
+      data.transcript = String(next && next.transcript || "").trim();
+      data.pending = !!(next && next.pending);
+      data.note = next && next.note || "";
+      render();
+    };
+    return node;
+  }
+  function addCopyAction(div, text) {
     var existing = div.querySelector(".msg-actions");
     if (existing) existing.remove();
     if (!String(text || "").trim()) return;
@@ -532,9 +697,8 @@
     if (m.role === "user") {
       var parsed = parseUserText(text);
       copyable = parsed.text || "";
-      parsed.voices.forEach(function (v) {
-        html += '<div class="voice"><audio controls preload="metadata" src="' + esc(v.src) + '"></audio>' +
-          (v.transcript ? '<div class="transcript"><span class="tlabel">Transcrição</span>' + esc(v.transcript).replace(/\n/g, "<br>") + '</div>' : '<div class="transcript co-muted">' + esc(v.note || "sem transcrição") + '</div>') + '</div>';
+      parsed.voices.forEach(function () {
+        html += '<div class="voice-slot"></div>';
       });
       if (parsed.files.length) html += '<div class="files">' + parsed.files.map(function (f) {
         return '<a class="file-link" href="' + esc(f.url) + '" download="' + esc(f.name) + '" target="_blank" rel="noreferrer"><span>📎</span><span>' + esc(f.name) + '</span><small>' + esc(f.size || "") + '</small></a>';
@@ -546,6 +710,12 @@
     }
     if (m.timestamp) html += '<span class="time">' + esc(fmtTime(m.timestamp)) + "</span>";
     div.innerHTML = html;
+    if (m.role === "user" && parsed && parsed.voices.length) {
+      var slots = div.querySelectorAll(".voice-slot");
+      parsed.voices.forEach(function (v, index) {
+        if (slots[index]) slots[index].replaceWith(makeVoice(v));
+      });
+    }
     div.querySelectorAll(".imgs img").forEach(function (im) { im.addEventListener("click", function () { lightbox(im.src); }); });
     if (m.role !== "system") addCopyAction(div, copyable);
     return div;
@@ -554,13 +724,23 @@
     var lb = document.createElement("div"); lb.className = "lightbox"; lb.innerHTML = '<img src="' + esc(src) + '">';
     lb.addEventListener("click", function () { lb.remove(); }); document.body.appendChild(lb);
   }
+  var SCROLL_GAP = 80;
   function nearBottom() {
     var box = $("messages");
-    return box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+    return box.scrollHeight - box.scrollTop - box.clientHeight < SCROLL_GAP;
+  }
+  function updateScrollButton() {
+    var btn = $("btn-scroll-bottom"), box = $("messages"), chat = $("chat");
+    if (!btn || !box) return;
+    var audioMenuOpen = !!document.querySelector(".voice-menu:not(.hidden)");
+    var show = !!(state.current && chat && !chat.classList.contains("hidden") && !audioMenuOpen &&
+      !state.messagesLoading && (box.scrollHeight - box.scrollTop - box.clientHeight > SCROLL_GAP));
+    btn.classList.toggle("hidden", !show);
   }
   function renderMessages() {
     var box = $("messages");
     var stick = nearBottom();
+    var previousTop = box.scrollTop;
     box.innerHTML = "";
     var groups = ui ? ui.groupMessages(state.messages) : [{ key: "", label: "", messages: state.messages }];
     groups.forEach(function (group) {
@@ -574,8 +754,19 @@
       group.messages.forEach(function (message) { box.appendChild(bubble(message)); });
     });
     if (stick) scrollBottom();
+    else {
+      box.scrollTop = previousTop;
+      updateScrollButton();
+    }
   }
-  function scrollBottom() { var box = $("messages"); box.scrollTop = box.scrollHeight; }
+  function scrollBottom() {
+    var box = $("messages");
+    box.scrollTop = box.scrollHeight;
+    updateScrollButton();
+  }
+  $("btn-scroll-bottom").addEventListener("click", function () { scrollBottom(); });
+  $("messages").addEventListener("scroll", updateScrollButton, { passive: true });
+  window.addEventListener("resize", updateScrollButton);
   // Pedido de aprovação de comando: o agente fica pausado até a pessoa escolher.
   var APPROVAL_LABELS = { once: "Permitir uma vez", session: "Permitir nesta conversa", always: "Permitir sempre", deny: "Negar" };
   var APPROVAL_DONE = { once: "Permitido uma vez", session: "Permitido nesta conversa", always: "Permitido sempre", deny: "Negado" };
@@ -608,11 +799,25 @@
       };
       actions.appendChild(b);
     });
-    $("messages").appendChild(box); scrollBottom();
+    var follow = nearBottom();
+    $("messages").appendChild(box);
+    if (follow) scrollBottom(); else updateScrollButton();
     return { expire: function () { if (!settled) lock("Pedido encerrado sem resposta.", "denied"); } };
   }
 
   function setTyping(on, text) { $("typing").classList.toggle("hidden", !on); if (text) $("typing-text").textContent = text; }
+  function updateComposerState() {
+    var sendBtn = $("btn-send"), mic = $("btn-mic");
+    if (!sendBtn || !mic) return;
+    var recording = !!(state.recorder && state.recorder.state === "recording");
+    var busy = !!(state.streaming || state.sending || state.micBusy || recording);
+    sendBtn.disabled = busy;
+    sendBtn.setAttribute("aria-busy", busy ? "true" : "false");
+    mic.disabled = !!(state.micBusy || state.sending);
+    mic.classList.toggle("recording", recording);
+    mic.setAttribute("aria-pressed", recording ? "true" : "false");
+    mic.setAttribute("aria-label", recording ? "Parar gravação" : "Gravar áudio");
+  }
   function updateStopButton() {
     var btn = $("btn-stop");
     var supported = !state.capabilities || window.TregApi.feature(state.capabilities, "run_stop") !== false;
@@ -649,10 +854,26 @@
   input.addEventListener("keydown", function (e) { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); $("composer").requestSubmit(); } });
   $("composer").addEventListener("submit", function (e) { e.preventDefault(); send(); });
 
+  function removePendingSend(ctx) {
+    if (!ctx || ctx.runId) return;
+    var same = !!(state.current && state.current.id === ctx.sid);
+    if (same && ctx.pendingEl && ctx.pendingEl.parentNode) ctx.pendingEl.parentNode.removeChild(ctx.pendingEl);
+    if (same && ctx.pendingMsg) {
+      var index = state.messages.indexOf(ctx.pendingMsg);
+      if (index >= 0) state.messages.splice(index, 1);
+    }
+    (ctx.pendingAudios || []).forEach(function (a) {
+      if (a.localUrl) URL.revokeObjectURL(a.localUrl);
+      a.localUrl = null;
+    });
+    renderChatStatus();
+    updateScrollButton();
+  }
   function send() {
     var text = input.value.trim();
     var atts = state.attachments.slice();
-    if ((!text && !atts.length) || state.streaming || !state.current) return;
+    if (state.recorder || state.micBusy) { toast("Finalize ou cancele a gravação antes de enviar"); return; }
+    if ((!text && !atts.length) || state.streaming || state.sending || !state.current) return;
     // /new e /reset: no PWA cada conversa tem o proprio id, entao o comando do gateway
     // nao troca a conversa aberta. Cria uma nova aqui, como no Telegram.
     var mNew = !atts.length && /^\/(new|reset)(?:\s+(.*))?$/i.exec(text);
@@ -668,25 +889,31 @@
     }
     if (atts.some(function (a) { return a.kind === "image" && !a.url; })) { toast("Aguarde o processamento da imagem"); return; }
     input.value = ""; input.style.height = "auto"; state.attachments = []; renderTray();
+    state.sending = true; state.streaming = true; updateComposerState();
     var sid = state.current.id;
     var images = atts.filter(function (a) { return a.kind === "image"; }).map(function (a) { return a.url; });
     var audios = atts.filter(function (a) { return a.kind === "audio"; });
     var files = atts.filter(function (a) { return a.kind === "file"; });
 
     // bolha local imediata (player com blob local enquanto sobe)
-    var localLines = [];
-    audios.forEach(function (a) { a.localUrl = URL.createObjectURL(a.file); });
+    var voiceNodes = [];
+    audios.forEach(function (a) {
+      a.localUrl = URL.createObjectURL(a.file);
+      a.voiceNode = makeVoice({ src: a.localUrl, pending: true });
+      voiceNodes.push(a.voiceNode);
+    });
     var userMsg = { role: "user", content: text, images: images, timestamp: Date.now() / 1000 };
     var el = bubble(userMsg);
-    if (audios.length || files.length) {
-      var extra = "";
-      audios.forEach(function (a) { extra += '<div class="voice"><audio controls preload="metadata" src="' + esc(a.localUrl) + '"></audio><div class="transcript co-muted">transcrevendo…</div></div>'; });
-      if (files.length) extra += '<div class="files">' + files.map(function (f) { return "📎 " + esc(f.name + ", " + fmtSize(f.size)); }).join("<br>") + "</div>";
-      el.insertAdjacentHTML("afterbegin", extra);
+    var anchor = el.querySelector("p") || el.querySelector(".time");
+    voiceNodes.forEach(function (node) { if (anchor) el.insertBefore(node, anchor); else el.appendChild(node); });
+    if (files.length) {
+      var filesEl = document.createElement("div"); filesEl.className = "files";
+      filesEl.innerHTML = files.map(function (f) { return "📎 " + esc(f.name + ", " + fmtSize(f.size)); }).join("<br>");
+      if (anchor) el.insertBefore(filesEl, anchor); else el.appendChild(filesEl);
     }
     state.messages.push(userMsg); $("messages").appendChild(el); renderChatStatus(); scrollBottom();
     var bot = { role: "assistant", content: "", timestamp: null }; var botEl = null;
-    state.streaming = true; $("btn-send").disabled = true; setTyping(true, (audios.length || files.length) ? "enviando anexos…" : "pensando…");
+    setTyping(true, (audios.length || files.length) ? "enviando anexos…" : "pensando…");
 
     var prep = Promise.all([
       Promise.all(audios.map(function (a) {
@@ -699,8 +926,7 @@
       voices.forEach(function (v, k) {
         var dur = (v.att.name.match(/audio-(\d+)s/) || [])[1];
         body += (body ? "\n" : "") + "🎤 Áudio" + (dur ? " (" + dur + "s)" : "") + ": " + v.up.path + "\n" + (v.transcript ? "Transcrição: " + v.transcript : "(sem transcrição disponível; é uma mensagem de voz, transcreva se possível)");
-        var t = el.querySelectorAll(".voice .transcript")[k];
-        if (t) { t.className = "transcript" + (v.transcript ? "" : " co-muted"); t.innerHTML = v.transcript ? '<span class="tlabel">Transcrição</span>' + esc(v.transcript) : "sem transcrição"; }
+        if (v.att.voiceNode) v.att.voiceNode.updateVoice({ transcript: v.transcript, pending: false });
       });
       ups.forEach(function (u) { body += (body ? "\n" : "") + "📎 Arquivo: " + u.path + " (" + u.name + ", " + fmtSize(u.size) + ")"; });
       if (ups.length) body += "\n(Os arquivos ficam em ~/uploads; leia com suas ferramentas de arquivo.)";
@@ -710,7 +936,7 @@
       images.forEach(function (u) { parts.push({ type: "image_url", image_url: { url: u } }); });
       return parts;
     });
-    var ctx = { sid: sid, profile: state.current && state.current.profile, text: text, bot: bot, botEl: botEl, approvals: [], approvalsSeen: {}, runId: null, finished: false };
+    var ctx = { sid: sid, profile: state.current && state.current.profile, text: text, bot: bot, botEl: botEl, approvals: [], approvalsSeen: {}, runId: null, finished: false, pendingEl: el, pendingMsg: userMsg, pendingAudios: audios };
     prep.then(function (message) {
       setTyping(true, "pensando…");
       // Execução em segundo plano: o agente continua no servidor mesmo se o celular suspender o app.
@@ -722,9 +948,27 @@
         return streamRun(ctx);
       })
       .catch(function (e) {
-        if (!state.attachments.length && atts.length) { state.attachments = atts; renderTray(); }
-        if (!input.value && text) { input.value = text; input.style.height = "auto"; input.style.height = Math.min(input.scrollHeight, 140) + "px"; }
-        if (e.message !== "login") { $("messages").appendChild(bubble({ role: "assistant", content: "Falha: " + e.message, error: true })); scrollBottom(); }
+        var same = !!(state.current && state.current.id === ctx.sid);
+        if (!ctx.runId) {
+          removePendingSend(ctx);
+          if (same) {
+            if (!state.attachments.length && atts.length) { state.attachments = atts; renderTray(); }
+            if (!input.value && text) { input.value = text; input.style.height = "auto"; input.style.height = Math.min(input.scrollHeight, 140) + "px"; }
+            if (e.message !== "login") {
+              $("messages").appendChild(bubble({ role: "assistant", content: "Falha ao enviar: " + e.message, error: true }));
+              scrollBottom();
+              toast("Falha ao enviar: " + e.message, 4000);
+            }
+          } else if (e.message !== "login") {
+            toast("Falha ao enviar: " + e.message, 4000);
+          }
+          finishRun(ctx, { failed: true, skipReload: true });
+          return;
+        }
+        if (e.message !== "login") {
+          $("messages").appendChild(bubble({ role: "assistant", content: "Falha: " + e.message, error: true }));
+          scrollBottom();
+        }
         finishRun(ctx);
       });
   }
@@ -739,9 +983,12 @@
     if (ctx.finished) return;
     var bot = ctx.bot;
     if (ev === "message.delta" || ev === "assistant.delta") {
+      var followDelta = nearBottom();
       bot.content += d.delta || "";
       if (!ctx.botEl) { ctx.botEl = bubble(bot); $("messages").appendChild(ctx.botEl); }
-      ctx.botEl.innerHTML = md(bot.content); addCopyAction(ctx.botEl, bot.content); scrollBottom(); setTyping(true, "escrevendo…");
+      ctx.botEl.innerHTML = md(bot.content); addCopyAction(ctx.botEl, bot.content);
+      if (followDelta) scrollBottom(); else updateScrollButton();
+      setTyping(true, "escrevendo…");
     } else if (ev === "approval.request") {
       var approvalKey = d.request_id || d.prompt_id || d.run_id || String(Date.now());
       if (!ctx.approvalsSeen) ctx.approvalsSeen = {};
@@ -753,19 +1000,25 @@
     } else if (ev === "run.completed" || ev === "assistant.completed") {
       ctx.approvals.forEach(function (c) { c.expire(); });
       var out = d.output !== undefined ? d.output : d.content;
+      var followCompleted = nearBottom();
       if (out) bot.content = out;
       bot.timestamp = Date.now() / 1000;
       if (!ctx.botEl) { ctx.botEl = bubble(bot); $("messages").appendChild(ctx.botEl); }
-      ctx.botEl.innerHTML = md(bot.content) + '<span class="time">' + esc(fmtTime(bot.timestamp)) + "</span>"; addCopyAction(ctx.botEl, bot.content); scrollBottom();
+      ctx.botEl.innerHTML = md(bot.content) + '<span class="time">' + esc(fmtTime(bot.timestamp)) + "</span>"; addCopyAction(ctx.botEl, bot.content);
+      if (followCompleted) scrollBottom(); else updateScrollButton();
       finishRun(ctx);
     } else if (ev === "run.failed" || ev === "error") {
       ctx.approvals.forEach(function (c) { c.expire(); });
       var msg = d.error || (d.message && (d.message.detail || d.message)) || "erro";
-      $("messages").appendChild(bubble({ role: "assistant", content: typeof msg === "string" ? msg : JSON.stringify(msg), error: true })); scrollBottom();
+      var followError = nearBottom();
+      $("messages").appendChild(bubble({ role: "assistant", content: typeof msg === "string" ? msg : JSON.stringify(msg), error: true }));
+      if (followError) scrollBottom(); else updateScrollButton();
       finishRun(ctx);
     } else if (ev === "run.cancelled" || ev === "run.interrupted") {
       ctx.approvals.forEach(function (c) { c.expire(); });
-      $("messages").appendChild(bubble({ role: "system", content: "Execução interrompida." })); scrollBottom();
+      var followCancelled = nearBottom();
+      $("messages").appendChild(bubble({ role: "system", content: "Execução interrompida." }));
+      if (followCancelled) scrollBottom(); else updateScrollButton();
       finishRun(ctx);
     }
   }
@@ -831,17 +1084,30 @@
     }).then(function () { if (ctx.onVisible) document.removeEventListener("visibilitychange", ctx.onVisible); });
   }
 
-  function finishRun(ctx) {
+  function finishRun(ctx, options) {
     if (ctx.finished) return;
+    var opts = options || {};
     ctx.finished = true;
     if (state.runCtx === ctx) state.runCtx = null;
     savePendingRun(null);
-    state.streaming = false; $("btn-send").disabled = false; setTyping(false); updateStopButton(); renderChatStatus();
-    if (ctx.bot.content && ctx.botEl) state.messages.push(ctx.bot);
-    var s = null; for (var i = 0; i < state.sessions.length; i++) if (state.sessions[i].id === ctx.sid) s = state.sessions[i];
-    if (s) { s.preview = ctx.bot.content || ctx.text || "📎 anexo"; s.last_active = Date.now() / 1000; s.message_count = (s.message_count || 0) + 2; }
-    renderSessions();
-    if (state.current && state.current.id === ctx.sid) loadMessages(true);  // sincroniza com o que ficou gravado no servidor
+    state.streaming = false; state.sending = false;
+    updateComposerState(); setTyping(false); updateStopButton(); renderChatStatus();
+    if (!opts.failed && ctx.bot.content && ctx.botEl) state.messages.push(ctx.bot);
+    if (!opts.failed) {
+      var s = null; for (var i = 0; i < state.sessions.length; i++) if (state.sessions[i].id === ctx.sid) s = state.sessions[i];
+      if (s) {
+        var preview = ctx.bot.content || ctx.text || "📎 anexo";
+        updateSession(ctx.sid, {
+          preview: preview,
+          snippet: preview,
+          last_active: Date.now() / 1000,
+          message_count: (s.message_count || 0) + 2
+        });
+      }
+      renderSessions();
+    }
+    if (!opts.skipReload && state.current && state.current.id === ctx.sid) loadMessages(true);
+    updateScrollButton();
   }
 
   // Execução que ficou pendente (app fechado ou recarregado no meio): volta a acompanhar.
@@ -850,7 +1116,7 @@
     if (!pr || !pr.run_id || state.streaming || !state.current || state.current.id !== pr.sid) return;
     if (Date.now() - (pr.started || 0) > 2 * 60 * 60 * 1000) { savePendingRun(null); return; }
     var ctx = { sid: pr.sid, profile: pr.profile, text: pr.text, bot: { role: "assistant", content: "", timestamp: null }, botEl: null, approvals: [], approvalsSeen: {}, runId: pr.run_id, finished: false };
-    state.streaming = true; state.runCtx = ctx; $("btn-send").disabled = true; updateStopButton();
+    state.streaming = true; state.sending = false; state.runCtx = ctx; updateComposerState(); updateStopButton();
     resumeRun(ctx);
   }
 
@@ -928,39 +1194,78 @@
 
   // microfone
   function stopTimer() { clearInterval(state.recTimer); state.recTimer = null; }
+  function stopRecording(cancel) {
+    if (!state.recorder || state.recorder.state !== "recording") return;
+    state.recCancel = !!cancel;
+    state.micBusy = true;
+    updateComposerState();
+    try { state.recorder.stop(); }
+    catch (error) {
+      state.recorder = null; state.recCancel = false; state.micBusy = false;
+      stopTimer(); $("rec").classList.add("hidden"); updateComposerState();
+      toast("Não foi possível encerrar a gravação");
+    }
+  }
   function toggleRecord() {
-    if (state.recorder && state.recorder.state === "recording") { state.recCancel = false; state.recorder.stop(); return; }
+    if (state.sending) return;
+    if (state.recorder && state.recorder.state === "recording") { stopRecording(false); return; }
+    if (state.recorder || state.micBusy) return;
     if (!navigator.mediaDevices || !window.MediaRecorder) { toast("Gravação não suportada neste navegador"); return; }
+    state.micBusy = true; updateComposerState();
     navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+      if (state.sending) {
+        stream.getTracks().forEach(function (t) { t.stop(); });
+        state.micBusy = false; updateComposerState(); return;
+      }
       var mime = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg"].filter(function (m) { return MediaRecorder.isTypeSupported(m); })[0] || "";
       var rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
       state.recorder = rec; state.recChunks = []; state.recStart = Date.now(); state.recCancel = false;
+      var failed = false;
       rec.ondataavailable = function (e) { if (e.data && e.data.size) state.recChunks.push(e.data); };
+      rec.onerror = function () {
+        failed = true;
+        stream.getTracks().forEach(function (t) { t.stop(); });
+        state.recorder = null; state.recCancel = false; state.micBusy = false;
+        stopTimer(); $("rec").classList.add("hidden"); updateComposerState();
+        toast("Falha durante a gravação");
+      };
       rec.onstop = function () {
         stream.getTracks().forEach(function (t) { t.stop(); });
-        stopTimer(); $("rec").classList.add("hidden"); $("btn-mic").classList.remove("recording");
+        stopTimer(); $("rec").classList.add("hidden");
+        state.recorder = null; state.micBusy = false;
+        updateComposerState();
+        if (failed) return;
         var type = rec.mimeType || mime || "audio/webm";
-        var blob = new Blob(state.recChunks, { type: type }); state.recorder = null;
+        var blob = new Blob(state.recChunks, { type: type });
         if (state.recCancel) { state.recCancel = false; toast("Gravação cancelada"); return; }
         if (blob.size < 1500) { toast("Gravação muito curta"); return; }
         var dur = Math.round((Date.now() - state.recStart) / 1000);
         attachAudio(blob, type, dur);
-        if (!state.streaming) send(); else toast("Áudio anexado; envie quando a resposta terminar");
       };
+      state.micBusy = false;
       rec.start(250);
-      $("btn-mic").classList.add("recording"); $("rec").classList.remove("hidden"); $("rec-time").textContent = "0:00";
-      state.recTimer = setInterval(function () { var t = Math.round((Date.now() - state.recStart) / 1000); $("rec-time").textContent = Math.floor(t / 60) + ":" + ("0" + (t % 60)).slice(-2); if (t >= 300 && rec.state === "recording") { toast("Limite de 5 minutos atingido"); rec.stop(); } }, 500);
-    }).catch(function (err) { var n = err && err.name; toast(n === "NotFoundError" ? "Nenhum microfone encontrado" : n === "NotAllowedError" ? "Permissão de microfone negada" : "Microfone indisponível: " + (err && err.message || n)); });
+      updateComposerState();
+      $("rec").classList.remove("hidden"); $("rec-time").textContent = "0:00";
+      state.recTimer = setInterval(function () {
+        var t = Math.round((Date.now() - state.recStart) / 1000);
+        $("rec-time").textContent = Math.floor(t / 60) + ":" + ("0" + (t % 60)).slice(-2);
+        if (t >= 300 && rec.state === "recording") { toast("Limite de 5 minutos atingido"); stopRecording(false); }
+      }, 500);
+    }).catch(function (err) {
+      state.micBusy = false; updateComposerState();
+      var n = err && err.name;
+      toast(n === "NotFoundError" ? "Nenhum microfone encontrado" : n === "NotAllowedError" ? "Permissão de microfone negada" : "Microfone indisponível: " + (err && err.message || n));
+    });
   }
   function attachAudio(blob, type, dur) {
     var ext = type.indexOf("mp4") >= 0 ? "m4a" : type.indexOf("ogg") >= 0 ? "ogg" : "webm";
     var f = new File([blob], "audio-" + dur + "s." + ext, { type: type.split(";")[0] });
-    state.attachments.push({ kind: "audio", name: f.name, size: f.size, file: f, mime: f.type }); renderTray();
+    state.attachments.push({ kind: "audio", name: f.name, size: f.size, file: f, mime: f.type });
+    renderTray(); updateComposerState();
+    toast(state.streaming ? "Áudio pronto; envie quando a resposta terminar" : "Áudio pronto. Toque em enviar.");
   }
   $("btn-mic").addEventListener("click", toggleRecord);
-  $("btn-rec-cancel").addEventListener("click", function () {
-    if (state.recorder && state.recorder.state === "recording") { state.recCancel = true; state.recorder.stop(); }
-  });
+  $("btn-rec-cancel").addEventListener("click", function () { stopRecording(true); });
 
   // ───────────────────────── menu da conversa
   function updateSession(id, patch) {
@@ -1035,12 +1340,23 @@
     } else if (act === "rename") {
       ask("Renomear conversa", sessionTitle(s), "Novo nome").then(function (t) {
         if (t === null) return;
-        req(pq("sessions/" + encodeURIComponent(s.id), s.profile), { method: "PATCH", body: { title: t.trim() } }).then(function () { s.title = t.trim(); if (isOpen) $("chat-title").textContent = sessionTitle(s); renderSessions(); toast("Renomeada"); }).catch(function (e) { toast("Não renomeou: " + e.message); });
+        req(pq("sessions/" + encodeURIComponent(s.id), s.profile), { method: "PATCH", body: { title: t.trim() } }).then(function (d) {
+          var saved = d && typeof d.title === "string" ? d.title : t.trim();
+          updateSession(s.id, { title: saved });
+          if (isOpen && state.current) $("chat-title").textContent = sessionTitle(state.current);
+          renderSessions();
+          toast("Renomeada");
+        }).catch(function (e) { toast("Não renomeou: " + e.message); });
       });
     } else if (act === "delete") {
       confirmDlg("Apagar conversa", "Isso remove o histórico desta conversa no servidor. Não dá para desfazer.", "Apagar").then(function (ok) {
         if (!ok) return;
-        req(pq("sessions/" + encodeURIComponent(s.id), s.profile), { method: "DELETE" }).then(function () { state.sessions = state.sessions.filter(function (x) { return x.id !== s.id; }); if (isOpen) closeSession(); else renderSessions(); toast("Apagada"); }).catch(function (e) { toast("Não apagou: " + e.message); });
+        req(pq("sessions/" + encodeURIComponent(s.id), s.profile), { method: "DELETE" }).then(function () {
+          state.sessions = state.sessions.filter(function (x) { return x.id !== s.id; });
+          if (state.searchResults) state.searchResults = state.searchResults.filter(function (x) { return x.id !== s.id; });
+          if (isOpen) closeSession(); else renderSessions();
+          toast("Apagada");
+        }).catch(function (e) { toast("Não apagou: " + e.message); });
       });
     } else if (act === "reload") { loadMessages(); toast("Recarregado"); }
   });
@@ -1069,8 +1385,9 @@
   $("agent").addEventListener("change", function (e) {
     var name = e.target.value;
     if (name !== "default" && !state.multiplex) { toast("Ligue gateway.multiplex_profiles para usar outros agentes"); e.target.value = state.profile; return; }
-    state.profile = name; state.searchAvailable = true; state.searchResults = null; state.searchError = null; state.searchLoading = false; state.searchSeq += 1;
-    state.searchQuery = ""; $("search").value = "";
+    state.profile = name; state.searchAvailable = true;
+    closeSearch(false); clearSearchState();
+    if (state.current) closeSession();
     try { localStorage.setItem("treg-pwa-profile", name); } catch (x) { }
     updateAgentModel(); state.sessions = []; renderSessions(); loadSessions(false, true); loadCapabilities();
   });
@@ -1091,6 +1408,7 @@
   function applyViewport() {
     var h = window.visualViewport ? Math.round(window.visualViewport.height) : window.innerHeight;
     if (h > 0) document.documentElement.style.setProperty("--app-h", h + "px");
+    updateScrollButton();
   }
   if (window.visualViewport) window.visualViewport.addEventListener("resize", applyViewport);
   window.addEventListener("orientationchange", function () { setTimeout(applyViewport, 80); });
@@ -1110,7 +1428,7 @@
 
   // ───────────────────────── boot
   function boot() {
-    initTheme(); applyViewport(); updateNetwork(); loadProfileAvatar();
+    initTheme(); applyViewport(); updateNetwork(); updateComposerState(); loadProfileAvatar();
     try { state.profile = localStorage.getItem("treg-pwa-profile") || "default"; } catch (x) { }
     req("me").then(function (d) { state.model = (d && d.model) || {}; }).catch(function () { });
     loadCapabilities();

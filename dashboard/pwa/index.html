@@ -36,6 +36,7 @@
     <header class="bar">
       <div class="brand" aria-hidden="true"><span class="brand-avatar"><span id="header-avatar-glyph">☤</span><img id="header-avatar-img" class="avatar-img hidden" alt=""></span></div>
       <div class="actions">
+        <button id="btn-search" class="icon" type="button" title="Buscar conversa" aria-label="Buscar conversa" aria-controls="search-row" aria-expanded="false"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4.2-4.2"/></svg></button>
         <button id="btn-header-menu" class="icon" type="button" title="Mais opções" aria-label="Mais opções" aria-haspopup="menu" aria-expanded="false" aria-controls="header-menu"><svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></button>
       </div>
       <div id="header-menu" class="header-menu hidden" role="menu" aria-labelledby="btn-header-menu">
@@ -43,12 +44,14 @@
         <button id="btn-settings" class="menu-item" type="button" role="menuitem"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg><span>Configurações</span></button>
       </div>
     </header>
+    <div id="search-row" class="search hidden" role="search">
+      <input id="search" type="search" placeholder="Buscar conversa" autocomplete="off" enterkeyhint="search" aria-label="Buscar conversa">
+    </div>
     <div class="agentbar">
       <label for="agent">Agente</label>
       <select id="agent" class="agent-select"><option value="default">default</option></select>
       <span id="agent-model" class="agent-model"></span>
     </div>
-    <div class="search"><input id="search" type="search" placeholder="Buscar conversa" autocomplete="off" aria-label="Buscar conversa"></div>
     <div id="list-status" class="list-status hidden" role="status" aria-live="polite"></div>
     <div id="list-skeleton" class="skeleton-list hidden" aria-hidden="true">
       <div class="skeleton-row"><i></i><span></span></div>
@@ -76,7 +79,10 @@
         <button id="btn-menu" class="icon" type="button" aria-label="Opções"><svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></button>
       </div>
     </header>
-    <div id="messages" class="messages" role="log" aria-live="polite"></div>
+    <div class="messages-wrap">
+      <div id="messages" class="messages" role="log" aria-live="polite"></div>
+      <button id="btn-scroll-bottom" class="scroll-bottom hidden" type="button" title="Ir para a última mensagem" aria-label="Ir para a última mensagem"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg></button>
+    </div>
     <div id="chat-status" class="chat-status hidden" role="status" aria-live="polite"></div>
     <div id="typing" class="typing hidden" role="status" aria-live="polite"><span class="dots"><i></i><i></i><i></i></span><span id="typing-text">pensando…</span></div>
     <div id="tray" class="tray hidden"></div>

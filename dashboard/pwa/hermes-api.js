@@ -56,11 +56,49 @@
         index[normalized.id] = out.length;
         out.push(normalized);
       } else {
-        out[index[normalized.id]] = Object.assign({}, out[index[normalized.id]], normalized);
+        var previous = out[index[normalized.id]];
+        var merged = Object.assign({}, previous, normalized);
+        if (!String(normalized.title || "").trim() && String(previous.title || "").trim()) {
+          merged.title = previous.title;
+        }
+        out[index[normalized.id]] = merged;
       }
     }
     (existing || []).forEach(add);
     (incoming || []).forEach(add);
+    return out;
+  }
+
+  function mergeSearchSessions(localItems, remoteItems, profile) {
+    var out = [];
+    var index = Object.create(null);
+    var localTitles = Object.create(null);
+    (localItems || []).forEach(function (item) {
+      var id = item && (item.id || item.session_id);
+      if (id && String(item.title || "").trim()) localTitles[id] = item.title;
+    });
+    function add(item) {
+      var normalized = normalizeSession(item);
+      if (!normalized.id) return;
+      normalized.search = true;
+      if (profile) normalized.profile = profile;
+      if (index[normalized.id] === undefined) {
+        index[normalized.id] = out.length;
+        out.push(normalized);
+        return;
+      }
+      var previous = out[index[normalized.id]];
+      var merged = Object.assign({}, previous, normalized);
+      if (localTitles[normalized.id]) merged.title = localTitles[normalized.id];
+      else if (!String(merged.title || "").trim() && String(previous.title || "").trim()) {
+        merged.title = previous.title;
+      }
+      if (!String(merged.snippet || "").trim()) merged.snippet = previous.snippet || "";
+      if (!String(merged.preview || "").trim()) merged.preview = previous.preview || "";
+      out[index[normalized.id]] = merged;
+    }
+    (localItems || []).forEach(add);
+    (remoteItems || []).forEach(add);
     return out;
   }
 
@@ -256,6 +294,7 @@
     create: create,
     feature: feature,
     mergeSessions: mergeSessions,
+    mergeSearchSessions: mergeSearchSessions,
     normalizeCapabilities: normalizeCapabilities,
     normalizeSearchResult: normalizeSearchResult,
     normalizeSession: normalizeSession

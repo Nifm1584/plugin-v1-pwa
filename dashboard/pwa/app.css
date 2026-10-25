@@ -115,8 +115,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .chat-avatar { width: 34px; height: 34px; font-size: 13px; flex: 0 0 auto; margin: 0 2px; }
 .title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sub { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.messages { flex: 1; overflow-y: auto; padding: 12px 10px; display: flex; flex-direction: column; gap: 6px; -webkit-overflow-scrolling: touch; background: var(--chat-bg);
+.messages-wrap { position: relative; flex: 1; min-height: 0; min-width: 0; display: flex; }
+.messages { flex: 1; min-width: 0; overflow-y: auto; padding: 12px 10px; display: flex; flex-direction: column; gap: 6px; -webkit-overflow-scrolling: touch; background: var(--chat-bg);
   background-image: radial-gradient(var(--chat-pattern) 1px, transparent 1px); background-size: 18px 18px; }
+.scroll-bottom { position: absolute; right: 12px; bottom: 10px; z-index: 4; width: 42px; height: 42px; display: grid; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: 50%; background: var(--pane); color: var(--accent); box-shadow: var(--shadow); cursor: pointer; }
+.scroll-bottom:active { background: var(--pressed); }
+@media (hover: hover) { .scroll-bottom:hover { background: var(--hover); } }
 .msg { max-width: min(82%, 640px); padding: 8px 12px; border-radius: var(--radius); box-shadow: var(--bubble-shadow); word-wrap: break-word; overflow-wrap: anywhere; position: relative; }
 .msg.user { align-self: flex-end; background: var(--me); color: var(--me-text); border-bottom-right-radius: 4px; }
 .msg.assistant { align-self: flex-start; background: var(--bot); border-bottom-left-radius: 4px; }
@@ -180,6 +184,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   .chat-avatar { display: none; }
   .s-meta .badge { display: none; }
   .msg { max-width: 88%; }
+  .scroll-bottom { right: 10px; width: 40px; height: 40px; }
   .sheet-card { padding-left: 8px; padding-right: 8px; }
 }
 @media (min-width: 900px) {
@@ -215,9 +220,19 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 
 /* voz e lista */
 .voice { margin-bottom: 6px; }
-.voice audio { width: min(260px, 70vw); height: 40px; display: block; }
+.voice-head { display: flex; align-items: center; gap: 8px; min-height: 30px; }
+.voice-label { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; opacity: .6; }
+.voice-menu-btn { margin-left: auto; width: 38px; height: 30px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 8px; background: transparent; color: inherit; opacity: .7; cursor: pointer; }
+.voice-menu-btn:active, .voice-menu-btn[aria-expanded="true"] { background: var(--pressed); opacity: 1; }
+.voice audio { width: min(260px, 70vw); max-width: calc(100% - 40px); height: 40px; display: block; margin-right: 40px; }
+.voice-menu { margin: 4px 0 2px; border: 1px solid var(--line); border-radius: 8px; background: var(--pane); overflow: hidden; }
+.voice-menu button { width: 100%; border: 0; border-radius: 0; background: transparent; color: var(--text); padding: 9px 10px; text-align: left; font: inherit; font-size: 13px; cursor: pointer; }
+.voice-menu button:disabled { color: var(--muted); opacity: .75; cursor: default; }
+.voice-menu button:not(:disabled):active, .voice-menu button:not(:disabled):focus-visible { background: var(--menu-hover); }
+.voice-note { font-size: 12px; margin-top: 4px; opacity: .72; }
 .transcript { font-size: 14px; margin-top: 4px; }
 .tlabel { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; opacity: .6; }
+@media (hover: hover) { .voice-menu-btn:hover { background: var(--hover); opacity: 1; } }
 .sessions .more { border: 0; background: transparent; color: var(--muted); font-size: 18px; line-height: 1; padding: 2px 6px; border-radius: 8px; cursor: pointer; }
 .sessions .more:active { background: var(--pressed); }
 .sheet-title { padding: 6px 12px 8px; font-weight: 600; color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

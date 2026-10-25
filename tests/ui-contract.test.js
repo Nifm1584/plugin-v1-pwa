@@ -19,8 +19,8 @@ const requiredIds = [
   "btn-header-menu", "header-menu", "btn-refresh", "btn-settings", "btn-menu", "sheet", "settings",
   "header-avatar-glyph", "header-avatar-img", "profile-avatar-preview", "profile-avatar-glyph",
   "profile-avatar-img", "btn-avatar-pick", "btn-avatar-remove", "avatar-file", "avatar-status",
-  "btn-stop", "chat-status", "btn-rec-cancel", "search", "sessions", "messages",
-  "chat-avatar", "app-version"
+  "btn-stop", "chat-status", "btn-rec-cancel", "search", "search-row", "btn-search", "sessions", "messages",
+  "btn-scroll-bottom", "chat-avatar", "app-version"
 ];
 
 for (const id of requiredIds) {
@@ -175,7 +175,7 @@ assert.ok(css.includes("--bg: #000000"), "fundo preto do Black ausente");
 assert.ok(css.includes("--me: #005c4b"), "mensagem enviada do Black ausente");
 assert.ok(!css.includes('data-theme="dark"'), "não deve restar seletor data-theme=dark");
 assert.ok(sw.includes('"ui-utils.js"'), "service worker não inclui ui-utils.js");
-assert.ok(sw.includes("treg-pwa-v3"), "cache do service worker não foi versionado");
+assert.ok(sw.includes("treg-pwa-v4"), "cache do service worker não foi versionado");
 assert.ok(plugin.includes("version: 1.8.0b1"), "plugin.yaml sem a versão 1.8.0b1");
 assert.ok(manifest.includes('"version": "1.8.0b1"'), "manifest do painel sem a versão 1.8.0b1");
 assert.ok(panel.includes("1.8.0b1"), "aba do painel não exibe a versão 1.8.0b1");
@@ -189,5 +189,45 @@ assert.ok(app.includes("api.searchHistory"), "busca remota não usa a camada de 
 assert.ok(app.includes("api.stopRun"), "parada de execução não usa a camada de API");
 assert.ok(app.includes("mergeSessions"), "paginação não reutiliza a mesclagem");
 assert.ok(!/\bfetch\s*\(/.test(app), "app.js não deve chamar fetch diretamente");
+
+const btnSearchIndex = listHeaderActions.indexOf('id="btn-search"');
+const btnHeaderMenuIndex = listHeaderActions.indexOf('id="btn-header-menu"');
+assert.ok(btnSearchIndex >= 0, "o cabeçalho deve ter o atalho de busca");
+assert.ok(btnSearchIndex < btnHeaderMenuIndex, "a lupa deve ficar entre o avatar e o menu");
+assert.ok(listHeaderActions.includes('aria-controls="search-row"'), "a lupa deve apontar para a busca");
+assert.ok(listHeaderActions.includes('aria-expanded="false"'), "a lupa deve iniciar recolhida");
+assert.ok(html.includes('id="search-row"'), "deve existir a linha de busca");
+assert.ok(/id="search-row"[^>]*class="search hidden"/.test(html), "a busca deve começar oculta");
+assert.ok(html.indexOf('id="search-row"') < html.indexOf('<div class="agentbar">'), "a busca deve abrir logo abaixo do cabeçalho");
+assert.ok(app.includes('$("btn-search").addEventListener("click"'), "a lupa deve alternar a busca");
+assert.ok(app.includes("function openSearch"), "a busca deve ter abertura implementada");
+assert.ok(app.includes("function closeSearch"), "a busca deve ter fechamento implementado");
+assert.ok(app.includes("mergeSearchSessions"), "a busca deve mesclar resultados locais e remotos");
+assert.ok(app.includes("localSearch(q)"), "a busca deve sempre considerar os títulos locais");
+assert.ok(app.includes("updateSession(s.id, { title: saved })"), "renomear deve atualizar lista e resultados de busca");
+
+assert.ok(app.includes('var btn = $("btn-scroll-bottom")'), "a seta deve depender do botão acessível");
+assert.equal((html.match(/id="btn-scroll-bottom"/g) || []).length, 1, "deve haver exatamente uma seta de rolagem");
+assert.ok(html.includes('aria-label="Ir para a última mensagem"'), "a seta deve ter nome acessível");
+assert.ok(html.indexOf('id="btn-scroll-bottom"') > html.indexOf('id="messages"'), "a seta deve ficar dentro da área da conversa");
+assert.ok(html.indexOf('id="btn-scroll-bottom"') < html.indexOf('id="composer"'), "a seta não deve ficar depois do composer");
+assert.ok(/\.messages-wrap\s*\{[^}]*position:\s*relative/.test(css), "a área da conversa deve conter a seta");
+assert.ok(/\.scroll-bottom\s*\{[^}]*position:\s*absolute/.test(css), "a seta deve flutuar na conversa");
+assert.ok(!/\.scroll-bottom\s*\{[^}]*position:\s*fixed/.test(css), "a seta não deve ser fixa ao viewport");
+assert.ok(app.includes('$("btn-scroll-bottom").addEventListener("click"'), "a seta deve rolar até o fim");
+assert.ok(app.includes("function updateScrollButton"), "a seta deve aparecer/sumir conforme a rolagem");
+assert.ok(app.includes('addEventListener("scroll", updateScrollButton'), "a seta deve acompanhar a rolagem manual");
+
+assert.ok(app.includes("function makeVoice"), "cada áudio deve ter renderização própria");
+assert.ok(app.includes("voice-menu-btn"), "cada áudio deve ter menu de três pontos");
+assert.ok(app.includes("Mostrar transcrição"), "o menu deve oferecer Mostrar transcrição");
+assert.ok(app.includes("Ocultar transcrição"), "o menu deve oferecer Ocultar transcrição");
+assert.ok(app.includes("Transcrição indisponível"), "áudio sem transcrição deve informar indisponibilidade");
+assert.ok(css.includes(".hidden { display: none !important; }"), "a transcrição deve começar oculta");
+assert.ok(/\.voice-menu\s*\{/.test(css), "o menu do áudio deve ter estilo próprio");
+assert.ok(!app.includes("if (!state.streaming) send();"), "o microfone não deve enviar automaticamente");
+assert.ok(app.includes("function stopRecording"), "a gravação deve ter encerramento explícito");
+assert.ok(app.includes("function updateComposerState"), "o composer deve refletir gravação e envio");
+assert.ok(app.includes("removePendingSend"), "falha de upload deve desfazer a mensagem otimista");
 
 console.log("PASS ui-contract: shell, menu, API layer e service worker");
