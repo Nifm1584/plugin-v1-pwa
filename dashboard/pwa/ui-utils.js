@@ -18,17 +18,21 @@
   var AVATAR_KEY = "profile";
 
   function normalizeTheme(value) {
-    return value === "light" || value === "dark" ? value : "auto";
+    if (value === "light" || value === "black") return value;
+    if (value === "dark") return "black";
+    return "auto";
   }
 
   function resolveTheme(preference, media) {
     var pref = normalizeTheme(preference);
-    if (pref === "auto") return media && media.matches ? "dark" : "light";
+    if (pref === "auto") return media && media.matches ? "auto-dark" : "auto-light";
     return pref;
   }
 
   function themeColor(theme) {
-    return resolveTheme(theme) === "dark" || theme === "dark" ? "#0f2f31" : "#ffffff";
+    if (theme === "black") return "#000000";
+    if (theme === "auto-dark" || theme === "dark") return "#0f2f31";
+    return "#ffffff";
   }
 
   function versionLabel() {

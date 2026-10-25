@@ -15,13 +15,15 @@
 (function () {
   try {
     var pref = localStorage.getItem("treg-pwa-theme");
-    if (pref !== "light" && pref !== "dark") pref = "auto";
+    if (pref === "dark") pref = "black";
+    if (pref !== "light" && pref !== "black") pref = "auto";
     var dark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-    document.documentElement.setAttribute("data-theme", pref === "auto" ? (dark ? "dark" : "light") : pref);
+    var palette = pref === "auto" ? (dark ? "auto-dark" : "auto-light") : pref;
+    document.documentElement.setAttribute("data-theme", palette);
     var meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute("content", pref === "auto" ? (dark ? "#0f2f31" : "#ffffff") : (pref === "dark" ? "#0f2f31" : "#ffffff"));
+    if (meta) meta.setAttribute("content", palette === "black" ? "#000000" : (palette === "auto-dark" ? "#0f2f31" : "#ffffff"));
   } catch (error) {
-    document.documentElement.setAttribute("data-theme", "light");
+    document.documentElement.setAttribute("data-theme", "auto-light");
   }
 })();
 </script>
@@ -125,8 +127,8 @@
       <div class="sheet-title">Aparência</div>
       <div class="theme-options" role="group" aria-label="Tema">
         <button type="button" data-theme-choice="auto" aria-pressed="false">Auto</button>
-        <button type="button" data-theme-choice="light" aria-pressed="false">Claro</button>
-        <button type="button" data-theme-choice="dark" aria-pressed="false">Escuro</button>
+        <button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
+        <button type="button" data-theme-choice="black" aria-pressed="false">Black</button>
       </div>
     </div>
     <div class="sheet-title">Autorização de comandos</div>

@@ -53,13 +53,19 @@ async function testCopy() {
 function testVersionAndTheme() {
   assert.equal(ui.VERSION, "1.8.0b1");
   assert.equal(ui.versionLabel(), "TREG · Fase 5B · 1.8.0b1");
-  assert.equal(ui.normalizeTheme("dark"), "dark");
+  assert.equal(ui.normalizeTheme("light"), "light");
+  assert.equal(ui.normalizeTheme("black"), "black");
+  assert.equal(ui.normalizeTheme("dark"), "black");
   assert.equal(ui.normalizeTheme("invalido"), "auto");
-  assert.equal(ui.resolveTheme("auto", { matches: true }), "dark");
-  assert.equal(ui.resolveTheme("auto", { matches: false }), "light");
+  assert.equal(ui.resolveTheme("auto", { matches: true }), "auto-dark");
+  assert.equal(ui.resolveTheme("auto", { matches: false }), "auto-light");
   assert.equal(ui.resolveTheme("light", { matches: true }), "light");
-  assert.equal(ui.themeColor("dark"), "#0f2f31");
+  assert.equal(ui.resolveTheme("black", { matches: false }), "black");
+  assert.equal(ui.themeColor("auto-dark"), "#0f2f31");
+  assert.equal(ui.themeColor("auto-light"), "#ffffff");
+  assert.equal(ui.themeColor("black"), "#000000");
   assert.equal(ui.themeColor("light"), "#ffffff");
+  assert.equal(ui.themeColor("dark"), "#0f2f31");
 }
 
 function testAvatarAndDates() {

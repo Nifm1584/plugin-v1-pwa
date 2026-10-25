@@ -33,7 +33,7 @@
   }
   function applyTheme(preference, persist) {
     var pref = ui ? ui.normalizeTheme(preference) : "auto";
-    var resolved = ui ? ui.resolveTheme(pref, themeMedia) : (themeMedia.matches ? "dark" : "light");
+    var resolved = ui ? ui.resolveTheme(pref, themeMedia) : (themeMedia.matches ? "auto-dark" : "auto-light");
     state.themePref = pref;
     document.documentElement.setAttribute("data-theme", resolved);
     var meta = document.querySelector('meta[name="theme-color"]');
