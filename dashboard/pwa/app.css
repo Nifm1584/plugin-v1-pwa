@@ -52,8 +52,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .list-status, .chat-status { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px; color: var(--muted); font-size: 13px; background: var(--pane); border-bottom: 1px solid var(--line); }
 .chat-status { border-top: 0; border-bottom: 0; }
 .list-status button, .chat-status button { border: 1px solid var(--line); background: var(--bg); color: var(--text); border-radius: 8px; padding: 5px 9px; font-size: 12px; cursor: pointer; }
-.list-foot { padding: 8px 12px calc(8px + var(--safe-b)); border-top: 1px solid var(--line); background: var(--pane); }
+.list-foot { padding: 8px 12px; border-top: 1px solid var(--line); background: var(--pane); }
 .list-foot .btn { width: 100%; }
+.list-actions { flex: 0 0 auto; display: flex; justify-content: flex-end; align-items: center; padding: 10px 12px calc(10px + var(--safe-b)); background: var(--pane); border-top: 1px solid var(--line); }
+.list-actions .icon.primary { width: 52px; height: 52px; box-shadow: 0 4px 14px rgba(0,0,0,.18); }
+.list-actions .icon.primary:active { background: var(--accent-strong); }
 .skeleton-list { padding: 8px 12px; }
 .skeleton-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; }
 .skeleton-row i, .skeleton-row span { display: block; background: linear-gradient(90deg, var(--line), var(--bg), var(--line)); background-size: 200% 100%; animation: shimmer 1.2s linear infinite; }

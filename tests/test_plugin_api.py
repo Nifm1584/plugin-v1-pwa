@@ -32,6 +32,33 @@ def test_stop_run_proxies_to_gateway():
     assert seen == {"method": "POST", "path": "/p/work/v1/runs/run_1/stop", "body": {}}
 
 
+def test_create_session_proxies_to_gateway():
+    calls = []
+
+    async def fake_proxy(method, path, *, params=None, body=None):
+        calls.append({"method": method, "path": path, "params": params, "body": body})
+        return {"session": {"id": "s-new"}}
+
+    with patch.object(plugin_api, "_proxy_json", fake_proxy):
+        first = asyncio.run(plugin_api.create_session(plugin_api.NewSession(title="  Nova conversa  "), "work"))
+        second = asyncio.run(plugin_api.create_session(plugin_api.NewSession()))
+
+    assert first == {"session": {"id": "s-new"}}
+    assert second == {"session": {"id": "s-new"}}
+    assert calls[0] == {
+        "method": "POST",
+        "path": "/p/work/api/sessions",
+        "params": None,
+        "body": {"source": "api_server", "title": "Nova conversa"},
+    }
+    assert calls[1] == {
+        "method": "POST",
+        "path": "/api/sessions",
+        "params": None,
+        "body": {"source": "api_server"},
+    }
+
+
 def test_stop_run_rejects_invalid_id():
     try:
         asyncio.run(plugin_api.stop_run("../bad"))

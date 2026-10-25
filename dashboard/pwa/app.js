@@ -165,7 +165,7 @@
     $("list-skeleton").classList.toggle("hidden", !loading || items.length > 0);
     var hasError = searching ? !!state.searchError : !!state.sessionsError;
     $("list-empty").classList.toggle("hidden", items.length > 0 || loading || hasError);
-    $("list-empty").textContent = searching ? "Nenhuma conversa encontrada." : "Nenhuma conversa ainda. Toque em + para começar.";
+    $("list-empty").textContent = searching ? "Nenhuma conversa encontrada." : "Nenhuma conversa ainda. Use o botão + abaixo para começar.";
     $("list-foot").classList.toggle("hidden", searching || loading || !state.sessionsHasMore);
     $("btn-more").disabled = state.sessionsLoading;
     $("btn-more").textContent = state.sessionsLoading ? "Carregando…" : "Carregar mais";

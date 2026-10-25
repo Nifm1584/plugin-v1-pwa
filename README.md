@@ -184,7 +184,7 @@ No computador, a aba **PWA** do painel mostra um QR code com o link. Em qualquer
 comando `/pwa` devolve o endereço.
 
 **Conversa cheia.** Quando o Hermes avisa que a conversa ficou grande demais para o modelo ("too large to
-compress further"), abra uma conversa nova: botão **+** na lista, ou digite `/new` no chat (aceita um nome,
+compress further"), abra uma conversa nova: botão **+** no rodapé da lista, ou digite `/new` no chat (aceita um nome,
 por exemplo `/new site da padaria`). O app cria a conversa e abre nela. Os comandos `/compress`, `/model` e
 os demais do Hermes continuam indo para o agente normalmente.
 

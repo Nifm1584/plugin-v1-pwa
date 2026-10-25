@@ -101,6 +101,28 @@ async function testMutationsAndCapabilities() {
   assert.equal(TregApi.feature(caps, "unknown_feature"), null);
 }
 
+async function testCreateSession() {
+  calls = [];
+  const api = TregApi.create({
+    base: "api/",
+    origin: "https://treg.example",
+    pageUrl: "https://treg.example/api/plugins/treg-pwa/",
+    fetch: mockFetch(function () { return response({ ok: true }); })
+  });
+
+  await api.createSession("Nova conversa", "work");
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].init.method, "POST");
+  assert.equal(calls[0].init.body, JSON.stringify({ title: "Nova conversa" }));
+  assert.match(calls[0].url, /^https:\/\/treg\.example\/api\/plugins\/treg-pwa\/api\/sessions\?profile=work$/);
+
+  await api.createSession(null);
+  assert.equal(calls.length, 2);
+  assert.equal(calls[1].init.method, "POST");
+  assert.equal(calls[1].init.body, JSON.stringify({ title: null }));
+  assert.match(calls[1].url, /^https:\/\/treg\.example\/api\/plugins\/treg-pwa\/api\/sessions$/);
+}
+
 async function testLegacyCapabilitiesAndAuth() {
   const api = TregApi.create({
     base: "api/",
@@ -171,10 +193,11 @@ async function main() {
   await testSessionsAndPagination();
   await testSearchAndFallbackSignal();
   await testMutationsAndCapabilities();
+  await testCreateSession();
   await testLegacyCapabilitiesAndAuth();
   await testResolvedPaths();
   await testEventStream();
-  console.log("PASS hermes-api: paginação, busca, pin, stop, SSE, capabilities e auth");
+  console.log("PASS hermes-api: paginação, busca, criação, pin, stop, SSE, capabilities e auth");
 }
 
 main().catch(function (error) {
