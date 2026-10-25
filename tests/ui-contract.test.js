@@ -15,6 +15,7 @@ const panel = fs.readFileSync(path.join(root, "dashboard", "dist", "index.js"), 
 
 const requiredIds = [
   "net-banner", "list-status", "list-skeleton", "list-foot", "btn-more", "btn-new",
+  "btn-header-menu", "header-menu", "btn-refresh", "btn-settings", "btn-menu", "sheet", "settings",
   "btn-stop", "chat-status", "btn-rec-cancel", "search", "sessions", "messages",
   "chat-avatar", "app-version"
 ];
@@ -43,6 +44,56 @@ assert.ok(btnNewMarkup.includes('title="Nova conversa"'), "btn-new deve preserva
 assert.ok(btnNewMarkup.includes('aria-label="Nova conversa"'), "btn-new deve preservar o aria-label original");
 assert.ok(btnNewMarkup.includes('width="22" height="22"'), "btn-new deve preservar o SVG 22x22");
 assert.ok(btnNewMarkup.includes('d="M12 5v14M5 12h14"'), "btn-new deve preservar o ícone + original");
+
+const listMarkup = html.slice(html.indexOf('<aside id="list"'), html.indexOf('</aside>') + 9);
+const listHeaderStart = listMarkup.indexOf('<header class="bar">');
+const listHeaderEnd = listMarkup.indexOf('</header>', listHeaderStart) + '</header>'.length;
+const listHeader = listMarkup.slice(listHeaderStart, listHeaderEnd);
+const listHeaderActionsStart = listHeader.indexOf('<div class="actions">');
+const listHeaderActionsEnd = listHeader.indexOf('</div>', listHeaderActionsStart) + 6;
+const listHeaderActions = listHeader.slice(listHeaderActionsStart, listHeaderActionsEnd);
+const headerMenuStart = listHeader.indexOf('id="header-menu"');
+const headerMenuEnd = listHeader.indexOf('</div>', headerMenuStart) + 6;
+const headerMenuMarkup = listHeader.slice(headerMenuStart, headerMenuEnd);
+
+assert.ok(!listHeader.includes("TREG"), "o texto TREG não deve aparecer no cabeçalho da lista");
+assert.ok(listHeader.includes('class="brand-avatar"'), "o cabeçalho deve ter o avatar neutro");
+assert.ok(listHeader.includes("☤"), "o avatar deve preservar o glifo existente");
+assert.ok(listHeaderActions.includes('id="btn-header-menu"'), "o botão do menu deve ficar nas ações do cabeçalho");
+assert.ok(!listHeaderActions.includes('id="btn-refresh"'), "Atualizar não deve ficar como ícone independente no cabeçalho");
+assert.ok(!listHeaderActions.includes('id="btn-settings"'), "Configurações não deve ficar como ícone independente no cabeçalho");
+assert.ok(listHeader.includes('aria-haspopup="menu"'), "o botão do menu deve declarar aria-haspopup");
+assert.ok(listHeader.includes('aria-expanded="false"'), "o botão do menu deve iniciar com aria-expanded=false");
+assert.ok(listHeader.includes('aria-controls="header-menu"'), "o botão do menu deve apontar para #header-menu");
+assert.ok(headerMenuMarkup.includes('role="menu"'), "o menu deve ter role=menu");
+assert.ok(headerMenuMarkup.includes('aria-labelledby="btn-header-menu"'), "o menu deve ser rotulado pelo botão");
+assert.ok(headerMenuMarkup.includes('id="btn-refresh"'), "Atualizar deve estar dentro do menu");
+assert.ok(headerMenuMarkup.includes('id="btn-settings"'), "Configurações deve estar dentro do menu");
+assert.ok(headerMenuMarkup.includes('role="menuitem"'), "os itens do menu devem ter role=menuitem");
+assert.ok(headerMenuMarkup.includes("Atualizar"), "o menu deve exibir Atualizar");
+assert.ok(headerMenuMarkup.includes("Configurações"), "o menu deve exibir Configurações");
+assert.equal((html.match(/id="btn-header-menu"/g) || []).length, 1, "deve haver exatamente um btn-header-menu");
+assert.equal((html.match(/id="header-menu"/g) || []).length, 1, "deve haver exatamente um header-menu");
+assert.equal((html.match(/id="btn-refresh"/g) || []).length, 1, "deve haver exatamente um btn-refresh");
+assert.equal((html.match(/id="btn-settings"/g) || []).length, 1, "deve haver exatamente um btn-settings");
+assert.ok(app.includes('$("btn-refresh").addEventListener("click"'), "o handler de Atualizar deve ser preservado");
+assert.ok(app.includes("loadSessions(false, true)"), "Atualizar deve preservar a chamada loadSessions(false, true)");
+assert.ok(app.includes('$("btn-settings").addEventListener("click", openSettings)'), "o handler de Configurações deve ser preservado");
+assert.ok(app.includes("function openHeaderMenu"), "o menu deve ter abertura implementada");
+assert.ok(app.includes("function closeHeaderMenu"), "o menu deve ter fechamento implementado");
+assert.ok(app.includes('headerMenuBtn.setAttribute("aria-expanded"'), "o menu deve atualizar aria-expanded");
+assert.ok(app.includes('document.addEventListener("click"'), "o menu deve fechar com clique fora");
+assert.ok(app.includes('e.key === "Escape"'), "o menu deve fechar com Escape");
+assert.ok(app.includes('$("btn-menu").addEventListener("click"'), "o menu de ações da conversa deve continuar existindo");
+assert.ok(app.includes("openSheet(state.current)"), "o menu da conversa deve continuar abrindo o sheet da sessão");
+assert.ok(/\.bar\s*\{[^}]*position:\s*relative/.test(css), "o cabeçalho deve ser o contêiner do menu");
+assert.ok(/\.brand-avatar\s*\{[^}]*border-radius:\s*50%/.test(css), "o avatar do cabeçalho deve ser circular");
+assert.ok(/\.header-menu\s*\{[^}]*position:\s*absolute/.test(css), "o menu deve ser posicionado dentro do cabeçalho");
+assert.ok(/\.header-menu\s*\{[^}]*top:\s*calc\(100% \+ 6px\)/.test(css), "o menu deve abrir abaixo do cabeçalho");
+assert.ok(/\.header-menu\s*\{[^}]*right:\s*8px/.test(css), "o menu deve ficar à direita");
+assert.ok(/\.header-menu\s*\{[^}]*z-index:\s*15/.test(css), "o menu deve ficar acima da lista");
+assert.ok(!/\.header-menu\s*\{[^}]*position:\s*fixed/.test(css), "o menu não deve ser fixo ao viewport");
+assert.ok(/\.header-menu\s+\.menu-item/.test(css), "o menu deve estilizar os itens");
 
 assert.ok(/#list\s*\{[^}]*position:\s*relative/.test(css), "#list deve ser o contêiner de posicionamento");
 assert.ok(/\.list-actions\s*\{[^}]*position:\s*absolute/.test(css), ".list-actions deve flutuar dentro de #list");

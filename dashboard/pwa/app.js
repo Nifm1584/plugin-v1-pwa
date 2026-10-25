@@ -260,6 +260,64 @@
     searchTimer = setTimeout(function () { performSearch(state.searchQuery); }, 350);
   });
   $("btn-refresh").addEventListener("click", function () { loadSessions(false, true).then(function () { toast("Atualizado"); }); });
+
+  // menu geral do cabeçalho da lista
+  var headerMenu = $("header-menu");
+  var headerMenuBtn = $("btn-header-menu");
+  function headerMenuItems() {
+    return Array.prototype.slice.call(headerMenu.querySelectorAll('[role="menuitem"]'));
+  }
+  function openHeaderMenu(focusLast) {
+    headerMenu.classList.remove("hidden");
+    headerMenuBtn.setAttribute("aria-expanded", "true");
+    var items = headerMenuItems();
+    if (items.length) items[focusLast ? items.length - 1 : 0].focus();
+  }
+  function closeHeaderMenu(returnFocus) {
+    if (headerMenu.classList.contains("hidden")) return;
+    headerMenu.classList.add("hidden");
+    headerMenuBtn.setAttribute("aria-expanded", "false");
+    if (returnFocus) headerMenuBtn.focus();
+  }
+  headerMenuBtn.addEventListener("click", function () {
+    if (headerMenu.classList.contains("hidden")) openHeaderMenu(false);
+    else closeHeaderMenu(true);
+  });
+  headerMenuBtn.addEventListener("keydown", function (e) {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      openHeaderMenu(e.key === "ArrowUp");
+    }
+  });
+  headerMenu.addEventListener("keydown", function (e) {
+    var items = headerMenuItems();
+    var index = items.indexOf(document.activeElement);
+    if (e.key === "ArrowDown") { e.preventDefault(); items[(index + 1) % items.length].focus(); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); items[(index - 1 + items.length) % items.length].focus(); }
+    else if (e.key === "Home") { e.preventDefault(); items[0].focus(); }
+    else if (e.key === "End") { e.preventDefault(); items[items.length - 1].focus(); }
+    else if (e.key === "Escape") { e.preventDefault(); closeHeaderMenu(true); }
+  });
+  headerMenu.addEventListener("click", function () { closeHeaderMenu(true); });
+  headerMenu.addEventListener("focusout", function () {
+    setTimeout(function () {
+      if (headerMenu.classList.contains("hidden")) return;
+      if (headerMenu.contains(document.activeElement) || document.activeElement === headerMenuBtn) return;
+      closeHeaderMenu(false);
+    }, 0);
+  });
+  document.addEventListener("click", function (e) {
+    if (headerMenu.classList.contains("hidden")) return;
+    if (headerMenu.contains(e.target) || headerMenuBtn.contains(e.target)) return;
+    closeHeaderMenu(false);
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && !headerMenu.classList.contains("hidden")) {
+      e.preventDefault();
+      closeHeaderMenu(true);
+    }
+  });
+
   $("btn-new").addEventListener("click", function () {
     ask("Nova conversa", "", "Nome (opcional)", "Criar").then(function (title) {
       if (title === null) return;
