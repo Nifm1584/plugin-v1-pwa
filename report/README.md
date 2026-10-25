@@ -23,6 +23,10 @@
 
 | Arquivo | Conteúdo |
 |---|---|
+| [38-validacao-versao-estavel.md](38-validacao-versao-estavel.md) | Validação funcional no computador e celular, coexistência com hermes-pwa, SHA congelado e limitação conhecida de imagens |
+
+| Arquivo | Conteúdo |
+|---|---|
 | [10-validacao-versao-estavel-c7.md](10-validacao-versao-estavel-c7.md) | Tag, Release, CI e validação da versão estável C7 |
 | [13-fase-c4-auditoria-publicacao-e-vps.md](13-fase-c4-auditoria-publicacao-e-vps.md) | Auditoria da publicação e do impacto na VPS |
 | [16-fase-c7-conferencia-exata-local-github.md](16-fase-c7-conferencia-exata-local-github.md) | Conferência local × GitHub da fase C7 |
