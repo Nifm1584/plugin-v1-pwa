@@ -36,6 +36,7 @@
 | [24-correcao-bloqueador-b1-ci.md](24-correcao-bloqueador-b1-ci.md) | Correção do B1 de CI, dependências Python e resultados em ambiente limpo |
 | [25-correcao-url-base-pwa.md](25-correcao-url-base-pwa.md) | Correção da URL base das chamadas do plugin e testes de caminhos |
 | [26-implementacao-fase-5b-visual.md](26-implementacao-fase-5b-visual.md) | Identidade 1.8.0b1, cópia, temas, datas, avatares e testes visuais |
+| [37-isolamento-cache-service-worker.md](37-isolamento-cache-service-worker.md) | Correção preventiva do isolamento de caches do service worker |
 | [prints-aplicativo-treg-pwa/README.md](prints-aplicativo-treg-pwa/README.md) | Relação das capturas do TREG PWA |
 
 > **Privacidade:** as três capturas manuais do WhatsApp analisadas no relatório 19 não foram publicadas por conterem nomes, telefone e conteúdo de conversas privadas. Elas permanecem no workspace local.
