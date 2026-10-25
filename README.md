@@ -65,11 +65,13 @@ plugin-v1-pwa/
 - Para múltiplos agentes no seletor: gateway multiplexado + mesma chave por perfil
   (detalhes na documentação original preservada abaixo).
 
-## Instalar uma versão específica pelo Hermes
+## Instalar ou atualizar o TREG PWA pelo Hermes
 
-Para pedir ao Hermes que instale uma versão exata do plugin, use o [template de prompt para instalação por versão](PROMPT-INSTALACAO-VERSAO-HERMES.md). O tutorial explica quais campos substituir, como conferir o SHA completo do commit e quais verificações exigir depois da instalação.
+O arquivo [PROMPT-INSTALACAO-VERSAO-HERMES.md](PROMPT-INSTALACAO-VERSAO-HERMES.md) contém o prompt pronto para **atualizar a instalação existente** do TREG PWA no Hermes, com a branch, o SHA e os caminhos já preenchidos. Ele foi preparado para a Fase 4F e exige verificações de segurança antes de alterar o checkout local.
 
-**Regra importante:** informe o commit exato da versão desejada. Não deixe o Hermes escolher automaticamente `main` ou `latest`. Antes de instalar, confirme que a tag/Release e o SHA correspondem ao código que você quer usar.
+O [histórico dos prompts de instalação](PROMPTS-HISTORICOS-HERMES.md) preserva as referências e os prompts anteriores recuperados da documentação do projeto. Os comandos históricos que usam `--ref` não devem ser reutilizados sem confirmação: o relatório 36 registra que o CLI inspecionado não aceita essa opção e que o comando genérico instala a `main`.
+
+**Importante:** o prompt atual é para atualizar a instalação que já existe em `/opt/data/plugins/treg-pwa`. Não o use como instrução de instalação nova, não apague nem recrie o diretório existente e não modifique o plugin original `hermes-pwa`.
 
 ---
 
