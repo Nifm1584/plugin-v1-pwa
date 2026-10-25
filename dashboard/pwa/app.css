@@ -20,6 +20,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .hidden { display: none !important; }
 .app { height: var(--app-h, 100dvh); display: grid; grid-template-columns: 1fr; overflow: hidden; }
 .pane { display: flex; flex-direction: column; min-height: 0; background: var(--pane); }
+#list { position: relative; }
 .placeholder { display: none; }
 
 /* barra superior */
@@ -37,7 +38,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 /* busca e lista */
 .search { padding: 8px 10px; background: var(--pane); border-bottom: 1px solid var(--line); }
 .search input { width: 100%; border: 0; border-radius: 10px; padding: 10px 12px; background: var(--bg); color: var(--text); font-size: 15px; outline: none; }
-.sessions { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; -webkit-overflow-scrolling: touch; }
+.sessions { list-style: none; margin: 0; padding: 0 0 calc(72px + var(--safe-b)); overflow-y: auto; flex: 1; -webkit-overflow-scrolling: touch; scroll-padding-bottom: calc(72px + var(--safe-b)); }
 .sessions li { display: grid; grid-template-columns: 48px 1fr auto; gap: 10px; align-items: center; padding: 11px 12px; min-height: 66px; border-bottom: 1px solid var(--line); cursor: pointer; }
 .sessions li:active, .sessions li.active { background: rgba(15,138,126,.10); }
 .avatar { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 18px; color: #fff; background: #7b8a90; }
@@ -48,15 +49,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .s-prev { color: var(--muted); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .s-meta { text-align: right; font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
 .badge { font-size: 10px; padding: 2px 6px; border-radius: 8px; background: var(--bg); color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
-.empty { padding: 32px 20px; color: var(--muted); text-align: center; }
+.empty { padding: 32px 20px calc(72px + var(--safe-b)); color: var(--muted); text-align: center; }
 .list-status, .chat-status { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px; color: var(--muted); font-size: 13px; background: var(--pane); border-bottom: 1px solid var(--line); }
 .chat-status { border-top: 0; border-bottom: 0; }
 .list-status button, .chat-status button { border: 1px solid var(--line); background: var(--bg); color: var(--text); border-radius: 8px; padding: 5px 9px; font-size: 12px; cursor: pointer; }
-.list-foot { padding: 8px 12px; border-top: 1px solid var(--line); background: var(--pane); }
+.list-foot { padding: 8px 12px calc(8px + var(--safe-b)); border-top: 1px solid var(--line); background: var(--pane); }
 .list-foot .btn { width: 100%; }
-.list-actions { flex: 0 0 auto; display: flex; justify-content: flex-end; align-items: center; padding: 10px 12px calc(10px + var(--safe-b)); background: var(--pane); border-top: 1px solid var(--line); }
-.list-actions .icon.primary { width: 52px; height: 52px; box-shadow: 0 4px 14px rgba(0,0,0,.18); }
-.list-actions .icon.primary:active { background: var(--accent-strong); }
+.list-actions { position: absolute; right: 16px; bottom: calc(16px + var(--safe-b)); z-index: 5; display: flex; }
+.list-foot:not(.hidden) ~ .list-actions { bottom: calc(72px + var(--safe-b)); }
 .skeleton-list { padding: 8px 12px; }
 .skeleton-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; }
 .skeleton-row i, .skeleton-row span { display: block; background: linear-gradient(90deg, var(--line), var(--bg), var(--line)); background-size: 200% 100%; animation: shimmer 1.2s linear infinite; }

@@ -36,7 +36,28 @@ assert.equal((html.match(/id="btn-new"/g) || []).length, 1, "deve haver exatamen
 assert.ok(html.slice(0, html.indexOf('</header>')).indexOf('id="btn-new"') < 0, "btn-new não deve ficar no cabeçalho");
 assert.ok(html.includes("Use o botão + abaixo para começar."), "estado vazio deve apontar para o botão inferior");
 assert.ok(app.includes("Use o botão + abaixo para começar."), "estado vazio dinâmico deve apontar para o botão inferior");
-assert.ok(!/\.list-actions\s*\{[^}]*position\s*:\s*(fixed|absolute)/.test(css), "list-actions não deve sobrepor a lista");
+
+const btnNewMarkup = html.slice(btnNewIndex, html.indexOf('</button>', btnNewIndex) + 9);
+assert.ok(btnNewMarkup.includes('class="icon primary"'), "btn-new deve preservar as classes originais");
+assert.ok(btnNewMarkup.includes('title="Nova conversa"'), "btn-new deve preservar o title original");
+assert.ok(btnNewMarkup.includes('aria-label="Nova conversa"'), "btn-new deve preservar o aria-label original");
+assert.ok(btnNewMarkup.includes('width="22" height="22"'), "btn-new deve preservar o SVG 22x22");
+assert.ok(btnNewMarkup.includes('d="M12 5v14M5 12h14"'), "btn-new deve preservar o ícone + original");
+
+assert.ok(/#list\s*\{[^}]*position:\s*relative/.test(css), "#list deve ser o contêiner de posicionamento");
+assert.ok(/\.list-actions\s*\{[^}]*position:\s*absolute/.test(css), ".list-actions deve flutuar dentro de #list");
+assert.ok(/\.list-actions\s*\{[^}]*right:\s*16px/.test(css), ".list-actions deve ficar à direita");
+assert.ok(/\.list-actions\s*\{[^}]*bottom:\s*calc\(16px \+ var\(--safe-b\)\)/.test(css), ".list-actions deve respeitar a área segura inferior");
+assert.ok(/\.list-actions\s*\{[^}]*z-index:\s*5/.test(css), ".list-actions deve ficar sobre a lista");
+assert.ok(!/\.list-actions\s*\{[^}]*position:\s*fixed/.test(css), ".list-actions não deve ser fixo ao viewport");
+assert.ok(/\.list-foot:not\(\.hidden\)\s*~\s*\.list-actions\s*\{[^}]*bottom:\s*calc\(72px \+ var\(--safe-b\)\)/.test(css), "o botão deve subir quando a paginação estiver visível");
+assert.ok(!/\.list-actions[^{]*\{[^}]*width:\s*52px/.test(css), "o botão deve voltar ao tamanho original de 42px");
+assert.ok(!/\.list-actions[^{]*\{[^}]*box-shadow/.test(css), "o botão não deve manter sombra personalizada da Fase 2");
+assert.ok(/\.icon\s*\{[^}]*width:\s*42px;[^}]*height:\s*42px;/.test(css), ".icon original deve continuar com 42x42");
+assert.ok(/\.icon\.primary\s*\{[^}]*background:\s*var\(--accent\)/.test(css), "tema original do botão deve ser preservado");
+assert.ok(/\.sessions\s*\{[^}]*padding:\s*0 0 calc\(72px \+ var\(--safe-b\)\)/.test(css), "a lista deve reservar espaço para o botão");
+assert.ok(/\.sessions\s*\{[^}]*scroll-padding-bottom:\s*calc\(72px \+ var\(--safe-b\)\)/.test(css), "a rolagem deve reservar espaço para o botão");
+assert.ok(/\.list-foot\s*\{[^}]*padding:\s*8px 12px calc\(8px \+ var\(--safe-b\)\)/.test(css), "a paginação deve respeitar a área segura inferior");
 
 const newHandlerStart = app.indexOf('$("btn-new").addEventListener');
 const newHandlerEnd = app.indexOf("// ───────────────────────── chat", newHandlerStart);
