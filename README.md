@@ -6,10 +6,7 @@
 > coexistência lado a lado) — ver `report/10-fase-b-isolamento.md` e
 > `report/11-instalacao-e-coexistencia.md`.
 >
-> **Versão de teste da Fase 5B:** `1.8.0b1` — inclui identificação de versão no app,
-> cópia de mensagens, separadores de data, temas Auto/Claro/Escuro, avatares
-> determinísticos e ajustes de legibilidade. Ver `report/26-implementacao-fase-5b-visual.md`.
-> Sem merge na `main` antes da validação real.
+> **Versão funcionalmente validada:** `1.8.0b1`, instalada no Hermes no SHA `16345103fcabf4347ac4225605036dcc1e1be3e6` (service worker `treg-pwa-v5`). O usuário confirmou os testes no computador e no celular e a preservação do PWA original. A validação e a limitação conhecida de renderização visual de imagens estão documentadas em [report/38-validacao-versao-estavel.md](report/38-validacao-versao-estavel.md). O código desta versão está congelado; próximas correções devem seguir em branch separada.
 
 ## Objetivo
 
