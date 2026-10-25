@@ -7,6 +7,7 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "dashboard", "pwa", "index.html"), "utf8");
 const app = fs.readFileSync(path.join(root, "dashboard", "pwa", "app.js"), "utf8");
+const uiUtils = fs.readFileSync(path.join(root, "dashboard", "pwa", "ui-utils.js"), "utf8");
 const css = fs.readFileSync(path.join(root, "dashboard", "pwa", "app.css"), "utf8");
 const sw = fs.readFileSync(path.join(root, "dashboard", "pwa", "sw.js"), "utf8");
 const plugin = fs.readFileSync(path.join(root, "plugin.yaml"), "utf8");
@@ -16,6 +17,8 @@ const panel = fs.readFileSync(path.join(root, "dashboard", "dist", "index.js"), 
 const requiredIds = [
   "net-banner", "list-status", "list-skeleton", "list-foot", "btn-more", "btn-new",
   "btn-header-menu", "header-menu", "btn-refresh", "btn-settings", "btn-menu", "sheet", "settings",
+  "header-avatar-glyph", "header-avatar-img", "profile-avatar-preview", "profile-avatar-glyph",
+  "profile-avatar-img", "btn-avatar-pick", "btn-avatar-remove", "avatar-file", "avatar-status",
   "btn-stop", "chat-status", "btn-rec-cancel", "search", "sessions", "messages",
   "chat-avatar", "app-version"
 ];
@@ -86,6 +89,35 @@ assert.ok(app.includes('document.addEventListener("click"'), "o menu deve fechar
 assert.ok(app.includes('e.key === "Escape"'), "o menu deve fechar com Escape");
 assert.ok(app.includes('$("btn-menu").addEventListener("click"'), "o menu de ações da conversa deve continuar existindo");
 assert.ok(app.includes("openSheet(state.current)"), "o menu da conversa deve continuar abrindo o sheet da sessão");
+
+assert.ok(listHeader.includes('id="header-avatar-glyph"'), "o avatar padrão deve ter o glyph do cabeçalho");
+assert.ok(listHeader.includes('id="header-avatar-img"'), "o avatar do cabeçalho deve ter imagem opcional");
+assert.ok(html.includes('id="profile-avatar-preview"'), "as configurações devem ter o preview do avatar");
+assert.ok(html.includes('id="profile-avatar-glyph"'), "o preview deve ter o glyph padrão");
+assert.ok(html.includes('id="profile-avatar-img"'), "o preview deve ter imagem opcional");
+assert.ok(html.includes('id="btn-avatar-pick"'), "deve haver o botão de escolher foto");
+assert.ok(html.includes('id="btn-avatar-remove"'), "deve haver o botão de remover foto");
+assert.ok(html.includes('id="avatar-file"'), "deve haver o input de arquivo da foto");
+assert.ok(html.includes('accept="image/jpeg,image/png,image/webp"'), "o input deve aceitar JPEG, PNG e WebP");
+assert.ok(html.includes('id="avatar-status"'), "deve haver status acessível da foto");
+assert.ok(html.includes('role="status"'), "o status da foto deve ser anunciado");
+assert.ok(app.includes("loadProfileAvatar"), "o app deve carregar a foto salva");
+assert.ok(app.includes("renderAvatar"), "o app deve renderizar a foto no cabeçalho e no preview");
+assert.ok(app.includes("ui.validateAvatarFile"), "o app deve validar o arquivo");
+assert.ok(app.includes("ui.prepareAvatarBlob"), "o app deve preparar/redimensionar a imagem");
+assert.ok(app.includes("ui.saveAvatarBlob"), "o app deve salvar a foto no IndexedDB");
+assert.ok(app.includes("ui.deleteAvatarBlob"), "o app deve remover a foto do IndexedDB");
+assert.ok(app.includes("btn-avatar-pick"), "o app deve ligar o botão de escolher foto");
+assert.ok(app.includes("btn-avatar-remove"), "o app deve ligar o botão de remover foto");
+assert.ok(uiUtils.includes("indexedDB"), "a foto deve usar IndexedDB");
+assert.ok(uiUtils.includes("prepareAvatarBlob"), "a camada de UI deve preparar a imagem");
+assert.ok(uiUtils.includes("saveAvatarBlob"), "a camada de UI deve salvar a imagem");
+assert.ok(uiUtils.includes("deleteAvatarBlob"), "a camada de UI deve excluir a imagem");
+assert.ok(!/\bfetch\s*\(/.test(uiUtils), "a camada da foto não deve chamar fetch/upload");
+assert.ok(/\.brand-avatar\s*\{[^}]*overflow:\s*hidden/.test(css), "o avatar deve recortar a foto no círculo");
+assert.ok(/\.avatar-img\s*\{[^}]*object-fit:\s*cover/.test(css), "a foto deve usar object-fit: cover");
+assert.ok(/\.profile-avatar-preview\s*\{[^}]*border-radius:\s*50%/.test(css), "o preview deve ser circular");
+assert.ok(/#settings\s+\.sheet-card\s*\{[^}]*overflow-y:\s*auto/.test(css), "as configurações devem rolar quando necessário");
 assert.ok(/\.bar\s*\{[^}]*position:\s*relative/.test(css), "o cabeçalho deve ser o contêiner do menu");
 assert.ok(/\.brand-avatar\s*\{[^}]*border-radius:\s*50%/.test(css), "o avatar do cabeçalho deve ser circular");
 assert.ok(/\.header-menu\s*\{[^}]*position:\s*absolute/.test(css), "o menu deve ser posicionado dentro do cabeçalho");

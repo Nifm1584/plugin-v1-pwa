@@ -318,6 +318,92 @@
     }
   });
 
+  // foto local do perfil (IndexedDB; nunca enviada ao servidor)
+  var avatarObjectUrl = null;
+  function setAvatarStatus(text, isError) {
+    var el = $("avatar-status");
+    if (!el) return;
+    el.textContent = text || "";
+    el.classList.toggle("error", !!isError);
+  }
+  function renderAvatar(blob) {
+    if (avatarObjectUrl) {
+      URL.revokeObjectURL(avatarObjectUrl);
+      avatarObjectUrl = null;
+    }
+    if (blob) avatarObjectUrl = URL.createObjectURL(blob);
+    ["header-avatar-img", "profile-avatar-img"].forEach(function (id) {
+      var img = $(id);
+      if (!img) return;
+      if (blob) {
+        img.src = avatarObjectUrl;
+        img.classList.remove("hidden");
+      } else {
+        img.removeAttribute("src");
+        img.classList.add("hidden");
+      }
+    });
+    ["header-avatar-glyph", "profile-avatar-glyph"].forEach(function (id) {
+      var glyph = $(id);
+      if (glyph) glyph.classList.toggle("hidden", !!blob);
+    });
+    var remove = $("btn-avatar-remove");
+    if (remove) remove.classList.toggle("hidden", !blob);
+  }
+  function loadProfileAvatar() {
+    if (!ui || typeof ui.getAvatarBlob !== "function") return;
+    ui.getAvatarBlob().then(function (blob) {
+      if (blob) renderAvatar(blob);
+    }).catch(function (error) {
+      setAvatarStatus("Não foi possível carregar a foto: " + (error && error.message || "erro local"), true);
+    });
+  }
+  $("btn-avatar-pick").addEventListener("click", function () {
+    $("avatar-file").click();
+  });
+  $("avatar-file").addEventListener("change", function (e) {
+    var file = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!ui || typeof ui.validateAvatarFile !== "function" ||
+        typeof ui.prepareAvatarBlob !== "function" || typeof ui.saveAvatarBlob !== "function") {
+      setAvatarStatus("Recurso de foto indisponível neste navegador.", true);
+      return;
+    }
+    var error = ui.validateAvatarFile(file);
+    if (error) { setAvatarStatus(error, true); return; }
+    var pick = $("btn-avatar-pick"), remove = $("btn-avatar-remove");
+    pick.disabled = true; remove.disabled = true;
+    setAvatarStatus("Processando foto…");
+    ui.prepareAvatarBlob(file).then(function (blob) {
+      return ui.saveAvatarBlob(blob).then(function () { return blob; });
+    }).then(function (blob) {
+      renderAvatar(blob);
+      setAvatarStatus("Foto atualizada.");
+    }).catch(function (err) {
+      setAvatarStatus("Não foi possível usar a foto: " + (err && err.message || "erro local"), true);
+    }).then(function () {
+      pick.disabled = false; remove.disabled = false;
+    });
+  });
+  $("btn-avatar-remove").addEventListener("click", function () {
+    if (!ui || typeof ui.deleteAvatarBlob !== "function") {
+      setAvatarStatus("Recurso de foto indisponível neste navegador.", true);
+      return;
+    }
+    var pick = $("btn-avatar-pick"), remove = $("btn-avatar-remove");
+    pick.disabled = true; remove.disabled = true;
+    setAvatarStatus("Removendo foto…");
+    ui.deleteAvatarBlob().then(function () {
+      renderAvatar(null);
+      setAvatarStatus("Foto removida.");
+    }).catch(function (err) {
+      setAvatarStatus("Não foi possível remover a foto: " + (err && err.message || "erro local"), true);
+    }).then(function () {
+      pick.disabled = false; remove.disabled = false;
+    });
+  });
+
   $("btn-new").addEventListener("click", function () {
     ask("Nova conversa", "", "Nome (opcional)", "Criar").then(function (title) {
       if (title === null) return;
@@ -1024,7 +1110,7 @@
 
   // ───────────────────────── boot
   function boot() {
-    initTheme(); applyViewport(); updateNetwork();
+    initTheme(); applyViewport(); updateNetwork(); loadProfileAvatar();
     try { state.profile = localStorage.getItem("treg-pwa-profile") || "default"; } catch (x) { }
     req("me").then(function (d) { state.model = (d && d.model) || {}; }).catch(function () { });
     loadCapabilities();

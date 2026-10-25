@@ -85,11 +85,31 @@ function testAvatarAndDates() {
   assert.equal(groups[2].label, "");
 }
 
+async function testAvatarPhotoHelpers() {
+  assert.ok(ui.AVATAR_TYPES.includes("image/jpeg"));
+  assert.ok(ui.AVATAR_TYPES.includes("image/png"));
+  assert.ok(ui.AVATAR_TYPES.includes("image/webp"));
+  assert.equal(ui.validateAvatarFile({ type: "image/jpeg", size: 1024 }), "");
+  assert.equal(ui.validateAvatarFile({ type: "image/png", size: 1024 }), "");
+  assert.equal(ui.validateAvatarFile({ type: "image/webp", size: 1024 }), "");
+  assert.match(ui.validateAvatarFile(null), /Selecione/);
+  assert.match(ui.validateAvatarFile({ type: "image/svg+xml", size: 100 }), /JPEG, PNG ou WebP/);
+  assert.match(ui.validateAvatarFile({ type: "text/plain", size: 100 }), /JPEG, PNG ou WebP/);
+  assert.match(ui.validateAvatarFile({ type: "image/jpeg", size: 0 }), /vazio/);
+  assert.match(ui.validateAvatarFile({ type: "image/jpeg", size: 10 * 1024 * 1024 + 1 }), /10 MB/);
+  assert.deepEqual(ui.fitAvatarDimensions(1000, 500, 512), { width: 512, height: 256 });
+  assert.deepEqual(ui.fitAvatarDimensions(500, 1000, 512), { width: 256, height: 512 });
+  assert.deepEqual(ui.fitAvatarDimensions(200, 100, 512), { width: 200, height: 100 });
+  assert.equal(ui.fitAvatarDimensions(0, 100, 512), null);
+  await assert.rejects(ui.prepareAvatarBlob({ type: "image/svg+xml", size: 100 }), /JPEG, PNG ou WebP/);
+}
+
 async function main() {
   await testCopy();
   testVersionAndTheme();
   testAvatarAndDates();
-  console.log("PASS ui-utils: copia, tema, versao, avatares e datas");
+  await testAvatarPhotoHelpers();
+  console.log("PASS ui-utils: copia, tema, versao, avatares, foto e datas");
 }
 
 main().catch(function (error) {
