@@ -292,6 +292,79 @@
     });
   }
 
+  var MEDIA_TYPES = {
+    image: ["png", "jpg", "jpeg", "gif", "webp", "bmp", "avif"],
+    audio: ["mp3", "wav", "ogg", "opus", "m4a", "flac", "aac"],
+    video: ["mp4", "webm", "mov", "m4v", "ogv", "mkv", "avi"],
+    document: ["pdf", "csv", "tsv", "txt", "md", "json", "xml", "yaml", "yml", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "odt", "ods", "odp", "rtf", "epub", "zip", "tar", "gz", "tgz", "bz2", "xz", "7z", "rar", "apk", "ipa", "html", "htm", "svg"]
+  };
+
+  function mediaBaseName(path) {
+    return String(path || "").split(/[\\/]/).pop() || "";
+  }
+
+  function mediaKind(path) {
+    var base = mediaBaseName(path);
+    var dot = base.lastIndexOf(".");
+    var ext = dot >= 0 ? base.slice(dot + 1).toLowerCase() : "";
+    if (!ext) return "";
+    var kinds = Object.keys(MEDIA_TYPES);
+    for (var i = 0; i < kinds.length; i += 1) {
+      if (MEDIA_TYPES[kinds[i]].indexOf(ext) >= 0) return kinds[i];
+    }
+    return "";
+  }
+
+  function cleanMediaPath(raw) {
+    var path = String(raw == null ? "" : raw).trim();
+    if (path.length >= 2 && path.charAt(0) === path.charAt(path.length - 1) &&
+        "`\"'".indexOf(path.charAt(0)) >= 0) {
+      path = path.slice(1, -1).trim();
+    }
+    path = path.replace(/^[`"']+/, "").replace(/[`"',.;:)\]}>]+$/, "").trim();
+    if (!path || !/^(?:\/|~\/|[A-Za-z]:[\\/])/.test(path)) return "";
+    if (/[\u0000-\u001f\u007f]/.test(path) || /[?#]/.test(path)) return "";
+    var segments = path.split(/[\\/]/);
+    if (segments.indexOf("..") >= 0) return "";
+    return path;
+  }
+
+  function mediaUrl(path, kind) {
+    var route = kind === "image" ? "/api/media" :
+      kind === "audio" || kind === "video" ? "/api/files/stream" : "/api/files/download";
+    return route + "?path=" + encodeURIComponent(path);
+  }
+
+  function parseMedia(text) {
+    var source = String(text == null ? "" : text);
+    var re = /(?:`|"|')?MEDIA:\s*(`[^`\n]+`|"[^"\n]+"|'[^'\n]+'|\S+)[`"']?/gi;
+    var parts = [];
+    var media = [];
+    var last = 0;
+    var match;
+    while ((match = re.exec(source))) {
+      if (match.index > last) {
+        var before = source.slice(last, match.index);
+        if (before) parts.push({ type: "text", text: before });
+      }
+      var path = cleanMediaPath(match[1]);
+      var kind = mediaKind(path);
+      if (path && kind) {
+        var item = { type: "media", kind: kind, path: path, name: mediaBaseName(path) };
+        parts.push(item);
+        media.push(item);
+      }
+      last = re.lastIndex;
+    }
+    if (last < source.length) {
+      var after = source.slice(last);
+      if (after) parts.push({ type: "text", text: after });
+    }
+    var cleaned = parts.filter(function (part) { return part.type === "text"; })
+      .map(function (part) { return part.text; }).join("").trim();
+    return { text: cleaned, parts: parts, media: media };
+  }
+
   return {
     VERSION: VERSION,
     PHASE: PHASE,
@@ -300,7 +373,13 @@
     AVATAR_TYPES: AVATAR_TYPES,
     AVATAR_MAX_BYTES: AVATAR_MAX_BYTES,
     AVATAR_MAX_SIDE: AVATAR_MAX_SIDE,
+    MEDIA_TYPES: MEDIA_TYPES,
     avatarInitial: avatarInitial,
+    cleanMediaPath: cleanMediaPath,
+    mediaBaseName: mediaBaseName,
+    mediaKind: mediaKind,
+    mediaUrl: mediaUrl,
+    parseMedia: parseMedia,
     copyText: copyText,
     dayKey: dayKey,
     dayLabel: dayLabel,

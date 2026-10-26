@@ -12,6 +12,7 @@ const handlers = {};
 const deleted = [];
 let claimed = false;
 const cacheKeys = [
+  "treg-pwa-v6",
   "treg-pwa-v5",
   "treg-pwa-v4",
   "treg-pwa-v3",
@@ -69,18 +70,18 @@ activation.then(function () {
   const removed = deleted.slice().sort();
   assert.deepEqual(
     removed,
-    ["treg-pwa-v1", "treg-pwa-v2", "treg-pwa-v3", "treg-pwa-v4"],
+    ["treg-pwa-v1", "treg-pwa-v2", "treg-pwa-v3", "treg-pwa-v4", "treg-pwa-v5"],
     "somente caches antigos do namespace treg-pwa- devem ser removidos"
   );
 
-  assert.equal(deleted.includes("treg-pwa-v5"), false, "o cache atual treg-pwa-v5 deve permanecer");
+  assert.equal(deleted.includes("treg-pwa-v6"), false, "o cache atual treg-pwa-v6 deve permanecer");
   assert.equal(deleted.includes("hermes-pwa-v12"), false, "o cache do plugin original deve permanecer");
   assert.equal(deleted.includes("hermes-pwa-v11"), false, "outros caches do plugin original devem permanecer");
   assert.equal(deleted.includes("other-app-cache-v9"), false, "caches de outras aplicações devem permanecer");
   assert.equal(deleted.includes("workbox-precache-v2"), false, "caches de terceiros devem permanecer");
   assert.ok(deleted.every(function (key) { return key.startsWith("treg-pwa-"); }), "a limpeza deve ser restrita ao namespace TREG");
 
-  console.log("PASS service-worker: caches antigos TREG removidos; cache atual e caches externos preservados");
+  console.log("PASS service-worker: caches antigos TREG removidos; cache atual v6 e caches externos preservados");
 }).catch(function (error) {
   console.error("FAIL service-worker:", error && error.stack || error);
   process.exitCode = 1;

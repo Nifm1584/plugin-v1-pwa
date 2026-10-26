@@ -225,6 +225,18 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .voice-menu-btn { margin-left: auto; width: 38px; height: 30px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 8px; background: transparent; color: inherit; opacity: .7; cursor: pointer; }
 .voice-menu-btn:active, .voice-menu-btn[aria-expanded="true"] { background: var(--pressed); opacity: 1; }
 .voice audio { width: min(260px, 70vw); max-width: calc(100% - 40px); height: 40px; display: block; margin-right: 40px; }
+.msg-content { display: flex; flex-direction: column; gap: 2px; }
+.msg .md-image { display: block; max-width: 100%; max-height: 360px; object-fit: contain; margin: 6px 0; border-radius: 8px; cursor: zoom-in; }
+.media-card { display: flex; flex-direction: column; gap: 6px; margin: 6px 0; max-width: min(420px, 100%); padding: 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+.media-head { min-width: 0; }
+.media-name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 600; }
+.media-card img { width: 100%; max-height: 360px; object-fit: contain; border-radius: 8px; cursor: zoom-in; }
+.media-card audio { width: min(300px, 100%); }
+.media-card video { width: 100%; max-height: 320px; border-radius: 8px; background: #000; }
+.media-status { font-size: 12px; color: var(--muted); }
+.media-status.error { color: var(--danger); }
+.media-card .file-link { margin-top: 0; }
+.media-note { display: block; width: 100%; color: var(--danger); font-size: 12px; }
 .voice-menu { margin: 4px 0 2px; border: 1px solid var(--line); border-radius: 8px; background: var(--pane); overflow: hidden; }
 .voice-menu button { width: 100%; border: 0; border-radius: 0; background: transparent; color: var(--text); padding: 9px 10px; text-align: left; font: inherit; font-size: 13px; cursor: pointer; }
 .voice-menu button:disabled { color: var(--muted); opacity: .75; cursor: default; }

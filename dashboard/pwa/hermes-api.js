@@ -236,6 +236,16 @@
           return { items: list.map(normalizeSearchResult), raw: data };
         });
       },
+      getMediaDataUrl: function (path) {
+        return requestAbsolute("/api/media" + buildQuery({ path: path })).then(function (data) {
+          return (data && data.data_url) || "";
+        });
+      },
+      getFileDataUrl: function (path) {
+        return requestAbsolute("/api/files/read" + buildQuery({ path: path })).then(function (data) {
+          return (data && data.data_url) || "";
+        });
+      },
       createRun: function (sessionId, message, profile) {
         return request("sessions/" + encodeURIComponent(sessionId) + "/runs" + buildQuery({ profile: profile }), {
           method: "POST",

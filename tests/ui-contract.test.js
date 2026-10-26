@@ -175,7 +175,7 @@ assert.ok(css.includes("--bg: #000000"), "fundo preto do Black ausente");
 assert.ok(css.includes("--me: #005c4b"), "mensagem enviada do Black ausente");
 assert.ok(!css.includes('data-theme="dark"'), "não deve restar seletor data-theme=dark");
 assert.ok(sw.includes('"ui-utils.js"'), "service worker não inclui ui-utils.js");
-assert.ok(sw.includes("treg-pwa-v5"), "cache do service worker não foi versionado para v5");
+assert.ok(sw.includes("treg-pwa-v6"), "cache do service worker não foi versionado para v5");
 assert.ok(sw.includes('k.startsWith("treg-pwa-") && k !== VERSION'), "a limpeza do service worker deve ser restrita ao namespace TREG");
 assert.ok(!sw.includes('keys.filter((k) => k !== VERSION)'), "a limpeza do service worker não deve remover todos os caches da origem");
 assert.ok(plugin.includes("version: 1.8.0b1"), "plugin.yaml sem a versão 1.8.0b1");
@@ -231,5 +231,22 @@ assert.ok(!app.includes("if (!state.streaming) send();"), "o microfone não deve
 assert.ok(app.includes("function stopRecording"), "a gravação deve ter encerramento explícito");
 assert.ok(app.includes("function updateComposerState"), "o composer deve refletir gravação e envio");
 assert.ok(app.includes("removePendingSend"), "falha de upload deve desfazer a mensagem otimista");
+
+assert.ok(app.includes("function uploadImage"), "imagens devem ser enviadas ao upload do plugin");
+assert.ok(app.includes("imageAtts"), "o envio deve tratar imagens como anexos");
+assert.ok(app.includes("🖼️ Imagem:"), "a mensagem deve preservar a referência da imagem");
+assert.ok(app.includes("function makeMediaNode"), "mídias de saída devem ser renderizadas");
+assert.ok(app.includes("api.getMediaDataUrl"), "imagens de saída devem usar a rota de mídia");
+assert.ok(app.includes("api.getFileDataUrl"), "imagens de saída devem ter fallback autenticado");
+assert.ok(uiUtils.includes("/api/files/stream"), "áudio/vídeo devem usar a rota de stream");
+assert.ok(uiUtils.includes("/api/files/download"), "documentos devem usar a rota de download");
+assert.ok(uiUtils.includes("/api/media"), "imagens do assistente devem usar a rota de mídia");
+assert.ok(uiUtils.includes("function parseMedia"), "tags MEDIA devem ser interpretadas no parser");
+assert.ok(uiUtils.includes("function mediaKind"), "o parser deve limitar tipos por extensão");
+assert.ok(uiUtils.includes("function mediaUrl"), "o parser deve gerar URLs das rotas existentes");
+assert.ok(/\.media-card\s*\{/.test(css), "o cartão de mídia deve ter estilo próprio");
+assert.ok(/\.media-card\s+audio/.test(css), "o player de áudio deve ter estilo próprio");
+assert.ok(/\.media-card\s+video/.test(css), "o player de vídeo deve ter estilo próprio");
+assert.ok(/\.media-status\.error/.test(css), "mídia indisponível deve ter estado de erro");
 
 console.log("PASS ui-contract: shell, menu, API layer e service worker");

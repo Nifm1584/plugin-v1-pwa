@@ -96,6 +96,26 @@ function testSearchMergeAndTitlePersistence() {
   assert.equal(preserved[0].preview, "nova");
 }
 
+﻿async function testMediaDataUrls() {
+  calls = [];
+  const api = TregApi.create({
+    base: "api/",
+    origin: "https://treg.example",
+    pageUrl: "https://treg.example/api/plugins/treg-pwa/",
+    fetch: mockFetch(function (url) {
+      if (url.indexOf("/api/media") >= 0) return response({ data_url: "data:image/png;base64,AA==" });
+      if (url.indexOf("/api/files/read") >= 0) return response({ data_url: "data:application/pdf;base64,AA==" });
+      return response({});
+    })
+  });
+  const image = await api.getMediaDataUrl("/opt/data/images/a b.png");
+  const file = await api.getFileDataUrl("/opt/data/files/a.pdf");
+  assert.equal(image, "data:image/png;base64,AA==");
+  assert.equal(file, "data:application/pdf;base64,AA==");
+  assert.match(calls[0].url, /^https:\/\/treg\.example\/api\/media\?path=%2Fopt%2Fdata%2Fimages%2Fa%20b\.png$/);
+  assert.match(calls[1].url, /^https:\/\/treg\.example\/api\/files\/read\?path=%2Fopt%2Fdata%2Ffiles%2Fa\.pdf$/);
+}
+
 async function testMutationsAndCapabilities() {
   calls = [];
   const api = TregApi.create({
@@ -221,6 +241,7 @@ async function main() {
   await testSessionsAndPagination();
   await testSearchAndFallbackSignal();
   testSearchMergeAndTitlePersistence();
+  await testMediaDataUrls();
   await testMutationsAndCapabilities();
   await testCreateSession();
   await testLegacyCapabilitiesAndAuth();

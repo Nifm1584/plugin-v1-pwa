@@ -110,12 +110,41 @@ async function testAvatarPhotoHelpers() {
   await assert.rejects(ui.prepareAvatarBlob({ type: "image/svg+xml", size: 100 }), /JPEG, PNG ou WebP/);
 }
 
+﻿function testMediaHelpers() {
+  assert.equal(ui.mediaKind("/opt/data/images/a.PNG"), "image");
+  assert.equal(ui.mediaKind("/opt/data/audio/a.mp3"), "audio");
+  assert.equal(ui.mediaKind("/opt/data/video/a.mp4"), "video");
+  assert.equal(ui.mediaKind("/opt/data/files/a.pdf"), "document");
+  assert.equal(ui.mediaKind("/opt/data/files/a.csv"), "document");
+  assert.equal(ui.mediaKind("/opt/data/files/a.svg"), "document");
+  assert.equal(ui.mediaKind("/opt/data/files/a.exe"), "");
+  assert.equal(ui.cleanMediaPath("`/opt/data/files/a.pdf`"), "/opt/data/files/a.pdf");
+  assert.equal(ui.cleanMediaPath("../../etc/passwd"), "");
+  assert.equal(ui.cleanMediaPath("https://example.test/a.png"), "");
+  assert.equal(ui.mediaUrl("/opt/data/a b.png", "image"), "/api/media?path=%2Fopt%2Fdata%2Fa%20b.png");
+  assert.equal(ui.mediaUrl("/opt/data/a.mp3", "audio"), "/api/files/stream?path=%2Fopt%2Fdata%2Fa.mp3");
+  assert.equal(ui.mediaUrl("/opt/data/a.pdf", "document"), "/api/files/download?path=%2Fopt%2Fdata%2Fa.pdf");
+
+  const parsed = ui.parseMedia("Antes\nMEDIA:/opt/data/images/a.png\nMeio\nMEDIA:/opt/data/files/b.pdf\nDepois");
+  assert.deepEqual(parsed.parts.map(function (part) { return part.type; }), ["text", "media", "text", "media", "text"]);
+  assert.deepEqual(parsed.media.map(function (item) { return item.kind; }), ["image", "document"]);
+  assert.deepEqual(parsed.media.map(function (item) { return item.name; }), ["a.png", "b.pdf"]);
+  assert.ok(parsed.text.indexOf("Antes") >= 0);
+  assert.ok(parsed.text.indexOf("Depois") >= 0);
+  assert.ok(parsed.text.indexOf("MEDIA:") < 0);
+
+  const blocked = ui.parseMedia("MEDIA:../../etc/passwd\nMEDIA:https://example.test/a.png\nMEDIA:/opt/data/a.exe");
+  assert.equal(blocked.media.length, 0);
+  assert.ok(blocked.text.indexOf("MEDIA:") < 0);
+}
+
 async function main() {
   await testCopy();
   testVersionAndTheme();
   testAvatarAndDates();
   await testAvatarPhotoHelpers();
-  console.log("PASS ui-utils: copia, tema, versao, avatares, foto e datas");
+  testMediaHelpers();
+  console.log("PASS ui-utils: copia, tema, versao, avatares, foto, datas e midia");
 }
 
 main().catch(function (error) {

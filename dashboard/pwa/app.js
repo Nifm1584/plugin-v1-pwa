@@ -65,6 +65,9 @@
     var t = esc(text);
     var blocks = [];
     t = t.replace(/```([a-z0-9_-]*)\n([\s\S]*?)```/g, function (_, lang, code) { blocks.push("<pre><code>" + code.replace(/\n$/, "") + "</code></pre>"); return "@@BLOCK" + (blocks.length - 1) + "@@"; });
+    t = t.replace(/!\[([^\]]*)\]\((data:image\/(?:png|jpe?g|gif|webp|bmp|avif);base64,[a-z0-9+/=]+)\)/gi, function (_, alt, url) {
+      return '<img class="md-image" src="' + url + '" alt="' + alt + '">';
+    });
     t = t.replace(/`([^`\n]+)`/g, "<code>$1</code>");
     t = t.replace(/\*\*([^*\n]+)\*\*/g, "<b>$1</b>").replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<i>$2</i>");
     t = t.replace(/(https?:\/\/[^\s<]+[^\s<.,;:!?)])/g, '<a href="$1" target="_blank" rel="noreferrer">$1</a>');
@@ -540,22 +543,29 @@
   //   Transcrição: ...
   //   📎 Arquivo: /opt/data/home/uploads/yyy.pdf (nome, 1.2 MB)
   function parseUserText(text) {
-    var out = { voices: [], files: [], text: "" }, rest = [];
+    var out = { voices: [], files: [], images: [], text: "" }, rest = [];
     var lines = (text || "").split("\n"), i = 0;
     while (i < lines.length) {
       var ln = lines[i];
       var mv = ln.match(/^🎤 Áudio(?: \((\d+)s\))?: (\S+)\s*$/);
       if (mv) {
         var v = { src: "api/uploads/" + encodeURIComponent(mv[2].split("/").pop()), transcript: "", note: "" }; i++;
-        if (i < lines.length && /^Transcrição: /.test(lines[i])) { v.transcript = lines[i].replace(/^Transcrição: /, ""); i++; while (i < lines.length && lines[i] && !/^(🎤|📎|Transcrição:)/.test(lines[i]) && v.transcript && !/^Arquivos anexados/.test(lines[i])) { v.transcript += "\n" + lines[i]; i++; } }
+        if (i < lines.length && /^Transcrição: /.test(lines[i])) { v.transcript = lines[i].replace(/^Transcrição: /, ""); i++; while (i < lines.length && lines[i] && !/^(🎤|📎|🖼️|Transcrição:)/.test(lines[i]) && v.transcript && !/^Arquivos anexados/.test(lines[i])) { v.transcript += "\n" + lines[i]; i++; } }
         else if (i < lines.length && /^\(sem transcrição/.test(lines[i])) { v.note = lines[i]; i++; }
         out.voices.push(v); continue;
       }
       var mf = ln.match(/^📎 Arquivo: (\S+) \((.*)\)\s*$/);
       if (mf) {
         var fname = mf[2].split(",")[0].trim();
-        var base = mf[1].split(/[\\/]/).pop();
-        out.files.push({ name: fname || base, size: (mf[2].split(",")[1] || "").trim(), path: mf[1], url: "api/uploads/" + encodeURIComponent(base) });
+        var fbase = mf[1].split(/[\\/]/).pop();
+        out.files.push({ name: fname || fbase, size: (mf[2].split(",")[1] || "").trim(), path: mf[1], url: "api/uploads/" + encodeURIComponent(fbase) });
+        i++; continue;
+      }
+      var mi = ln.match(/^🖼️ Imagem: (\S+) \((.*)\)\s*$/);
+      if (mi) {
+        var iname = mi[2].split(",")[0].trim();
+        var ibase = mi[1].split(/[\\/]/).pop();
+        out.images.push({ name: iname || ibase, size: (mi[2].split(",")[1] || "").trim(), path: mi[1], src: "api/uploads/" + encodeURIComponent(ibase) });
         i++; continue;
       }
       if (/^Arquivos anexados pelo usuário/.test(ln) || /^- \/.*uploads\//.test(ln) || /^\(Os arquivos ficam em/.test(ln)) { i++; continue; }
@@ -686,40 +696,189 @@
     copy.addEventListener("click", function (event) { event.stopPropagation(); copyMessage(text); });
     actions.appendChild(copy); div.appendChild(actions);
   }
+  function bindImage(img) {
+    if (!img) return;
+    img.addEventListener("click", function () { if (img.src) lightbox(img.src); });
+    img.addEventListener("error", function () {
+      img.classList.add("hidden");
+      var parent = img.parentNode;
+      if (!parent || parent.querySelector(".media-note")) return;
+      var note = document.createElement("span");
+      note.className = "media-note";
+      note.textContent = "Imagem indisponível";
+      parent.appendChild(note);
+    });
+  }
+  function mediaName(media) {
+    return (ui && ui.mediaBaseName ? ui.mediaBaseName(media.path) : String(media.path || "").split(/[\\/]/).pop()) || "arquivo";
+  }
+  function mediaUrlFor(media) {
+    if (ui && typeof ui.mediaUrl === "function") return ui.mediaUrl(media.path, media.kind);
+    return "";
+  }
+  function setMediaError(status, text) {
+    status.textContent = text;
+    status.classList.remove("hidden");
+    status.classList.add("error");
+  }
+  function loadAssistantImage(media, img, status) {
+    var first = api && typeof api.getMediaDataUrl === "function"
+      ? api.getMediaDataUrl(media.path)
+      : Promise.reject(new Error("Camada de mídia indisponível"));
+    first.then(function (dataUrl) {
+      if (!dataUrl) throw new Error("Imagem vazia");
+      return dataUrl;
+    }).catch(function () {
+      if (!api || typeof api.getFileDataUrl !== "function") throw new Error("Arquivo indisponível");
+      return api.getFileDataUrl(media.path);
+    }).then(function (dataUrl) {
+      if (!dataUrl) throw new Error("Imagem vazia");
+      img.src = dataUrl;
+      status.classList.add("hidden");
+    }).catch(function () {
+      img.classList.add("hidden");
+      setMediaError(status, "Imagem indisponível");
+    });
+  }
+  function makeMediaNode(media) {
+    var card = document.createElement("div");
+    card.className = "media-card media-" + media.kind;
+    var name = mediaName(media);
+    var head = document.createElement("div");
+    head.className = "media-head";
+    var label = document.createElement("span");
+    label.className = "media-name";
+    label.textContent = name;
+    head.appendChild(label);
+    card.appendChild(head);
+    var status = document.createElement("div");
+    status.className = "media-status";
+
+    if (media.kind === "image") {
+      var img = document.createElement("img");
+      img.alt = name;
+      img.loading = "lazy";
+      status.textContent = "Carregando imagem…";
+      card.appendChild(img);
+      card.appendChild(status);
+      img.addEventListener("click", function () { if (img.src) lightbox(img.src); });
+      img.addEventListener("error", function () {
+        img.classList.add("hidden");
+        setMediaError(status, "Imagem indisponível");
+      });
+      loadAssistantImage(media, img, status);
+      return card;
+    }
+
+    if (media.kind === "audio" || media.kind === "video") {
+      var player = document.createElement(media.kind);
+      player.controls = true;
+      player.preload = "metadata";
+      player.src = mediaUrlFor(media);
+      if (media.kind === "video") player.setAttribute("playsinline", "");
+      player.setAttribute("aria-label", media.kind === "audio" ? "Áudio recebido" : "Vídeo recebido");
+      status.textContent = media.kind === "audio" ? "Áudio indisponível" : "Vídeo indisponível ou formato não suportado";
+      card.appendChild(player);
+      card.appendChild(status);
+      status.classList.add("hidden");
+      player.addEventListener("loadedmetadata", function () { status.classList.add("hidden"); });
+      player.addEventListener("error", function () {
+        if (!player.dataset.fallback && mediaUrlFor(media)) {
+          player.dataset.fallback = "1";
+          player.src = mediaUrlFor(media).replace("/api/files/stream", "/api/files/download");
+          player.load();
+          return;
+        }
+        setMediaError(status, media.kind === "audio" ? "Áudio indisponível" : "Vídeo indisponível");
+      });
+      return card;
+    }
+
+    label.textContent = "Documento";
+    var link = document.createElement("a");
+    link.className = "file-link media-file";
+    link.href = mediaUrlFor(media);
+    link.download = name;
+    link.target = "_blank";
+    link.rel = "noreferrer";
+    link.textContent = name;
+    link.addEventListener("click", function (event) {
+      if (!mediaUrlFor(media)) {
+        event.preventDefault();
+        setMediaError(status, "Arquivo indisponível");
+      }
+    });
+    card.appendChild(link);
+    card.appendChild(status);
+    status.classList.add("hidden");
+    return card;
+  }
+  function appendMediaContent(div, parsed) {
+    var content = div.querySelector(".msg-content");
+    if (!content) {
+      content = document.createElement("div");
+      content.className = "msg-content";
+      var time = div.querySelector(".time");
+      if (time) div.insertBefore(content, time); else div.appendChild(content);
+    }
+    parsed.parts.forEach(function (part) {
+      if (part.type === "media") {
+        content.appendChild(makeMediaNode(part));
+      } else if (part.text && part.text.trim()) {
+        var text = document.createElement("div");
+        text.className = "msg-text";
+        text.innerHTML = md(part.text);
+        content.appendChild(text);
+      }
+    });
+    div.appendChild(content);
+  }
   function bubble(m) {
     var div = document.createElement("div");
     div.className = "msg " + (m.role === "user" ? "user" : m.role === "assistant" ? "assistant" : "system") + (m.error ? " error" : "");
-    var imgs = (m.images || contentImages(m.content));
-    var html = "";
-    if (imgs.length) html += '<div class="imgs">' + imgs.map(function (u) { return '<img src="' + esc(u) + '" alt="imagem">'; }).join("") + "</div>";
     var text = contentText(m.content);
+    var parsedUser = m.role === "user" ? parseUserText(text) : null;
+    var parsedAssistant = m.role === "assistant" && ui && typeof ui.parseMedia === "function" ? ui.parseMedia(text) : null;
+    var imgs = (m.images || contentImages(m.content) || []).slice();
+    if (parsedUser) {
+      parsedUser.images.forEach(function (image) { imgs.push(image.src); });
+    }
+    var html = "";
+    if (imgs.length) html += '<div class="imgs">' + imgs.map(function (u) {
+      return '<img src="' + esc(u) + '" alt="imagem">';
+    }).join("") + "</div>";
     var copyable = "";
-    if (m.role === "user") {
-      var parsed = parseUserText(text);
-      copyable = parsed.text || "";
-      parsed.voices.forEach(function () {
+    if (parsedUser) {
+      copyable = parsedUser.text || "";
+      parsedUser.voices.forEach(function () {
         html += '<div class="voice-slot"></div>';
       });
-      if (parsed.files.length) html += '<div class="files">' + parsed.files.map(function (f) {
+      if (parsedUser.files.length) html += '<div class="files">' + parsedUser.files.map(function (f) {
         return '<a class="file-link" href="' + esc(f.url) + '" download="' + esc(f.name) + '" target="_blank" rel="noreferrer"><span>📎</span><span>' + esc(f.name) + '</span><small>' + esc(f.size || "") + '</small></a>';
       }).join("") + "</div>";
-      if (parsed.text) html += "<p>" + esc(parsed.text).replace(/\n/g, "<br>") + "</p>";
+      if (parsedUser.text) html += "<p>" + esc(parsedUser.text).replace(/\n/g, "<br>") + "</p>";
+    } else if (parsedAssistant) {
+      copyable = parsedAssistant.text || "";
+      if (parsedAssistant.media.length) html += '<div class="msg-content"></div>';
+      else if (copyable) html += md(copyable);
     } else {
       copyable = text;
       if (text) html += md(text);
     }
     if (m.timestamp) html += '<span class="time">' + esc(fmtTime(m.timestamp)) + "</span>";
     div.innerHTML = html;
-    if (m.role === "user" && parsed && parsed.voices.length) {
+    if (parsedUser && parsedUser.voices.length) {
       var slots = div.querySelectorAll(".voice-slot");
-      parsed.voices.forEach(function (v, index) {
+      parsedUser.voices.forEach(function (v, index) {
         if (slots[index]) slots[index].replaceWith(makeVoice(v));
       });
     }
-    div.querySelectorAll(".imgs img").forEach(function (im) { im.addEventListener("click", function () { lightbox(im.src); }); });
+    if (parsedAssistant && parsedAssistant.media.length) appendMediaContent(div, parsedAssistant);
+    div.querySelectorAll(".imgs img, .md-image").forEach(bindImage);
     if (m.role !== "system") addCopyAction(div, copyable);
     return div;
   }
+
   function lightbox(src) {
     var lb = document.createElement("div"); lb.className = "lightbox"; lb.innerHTML = '<img src="' + esc(src) + '">';
     lb.addEventListener("click", function () { lb.remove(); }); document.body.appendChild(lb);
@@ -891,7 +1050,8 @@
     input.value = ""; input.style.height = "auto"; state.attachments = []; renderTray();
     state.sending = true; state.streaming = true; updateComposerState();
     var sid = state.current.id;
-    var images = atts.filter(function (a) { return a.kind === "image"; }).map(function (a) { return a.url; });
+    var imageAtts = atts.filter(function (a) { return a.kind === "image"; });
+    var images = imageAtts.map(function (a) { return a.url; });
     var audios = atts.filter(function (a) { return a.kind === "audio"; });
     var files = atts.filter(function (a) { return a.kind === "file"; });
 
@@ -913,16 +1073,30 @@
     }
     state.messages.push(userMsg); $("messages").appendChild(el); renderChatStatus(); scrollBottom();
     var bot = { role: "assistant", content: "", timestamp: null }; var botEl = null;
-    setTyping(true, (audios.length || files.length) ? "enviando anexos…" : "pensando…");
+    setTyping(true, (audios.length || files.length || imageAtts.length) ? "enviando anexos…" : "pensando…");
 
+    var imageFailures = false;
+    var imageUploads = imageAtts.map(function (a) {
+      return uploadImage(a).then(function (up) { a.upload = up; return up; }).catch(function (error) {
+        a.uploadError = error;
+        imageFailures = true;
+        return null;
+      });
+    });
     var prep = Promise.all([
       Promise.all(audios.map(function (a) {
         return Promise.all([uploadAttachment(a), transcribe(a.file, a.mime || a.file.type).catch(function () { return ""; })]).then(function (r) { return { up: r[0], transcript: (r[1] || "").trim(), att: a }; });
       })),
-      Promise.all(files.map(uploadAttachment))
+      Promise.all(files.map(uploadAttachment)),
+      Promise.all(imageUploads)
     ]).then(function (r) {
-      var voices = r[0], ups = r[1];
+      var voices = r[0], ups = r[1], imageRefs = r[2] || [];
       var body = text;
+      imageRefs.forEach(function (up) {
+        if (!up || !up.path) return;
+        body += (body ? "\n" : "") + "🖼️ Imagem: " + up.path + " (" + up.name + ", " + fmtSize(up.size) + ")";
+      });
+      if (imageFailures) toast("Imagem enviada para análise, mas não foi possível salvar a referência; ela pode não aparecer após recarregar.", 5000);
       voices.forEach(function (v, k) {
         var dur = (v.att.name.match(/audio-(\d+)s/) || [])[1];
         body += (body ? "\n" : "") + "🎤 Áudio" + (dur ? " (" + dur + "s)" : "") + ": " + v.up.path + "\n" + (v.transcript ? "Transcrição: " + v.transcript : "(sem transcrição disponível; é uma mensagem de voz, transcreva se possível)");
@@ -1146,6 +1320,7 @@
     list.forEach(function (f) {
       if (!f) return;
       if (f.size > MAX_FILE) { toast(f.name + ": maior que 25 MB"); return; }
+      if (f.type === "image/svg+xml") { toast("SVG n?o ? suportado; use PNG, JPEG ou WebP"); return; }
       if (f.type.indexOf("image/") === 0) {
         if (state.attachments.filter(function (a) { return a.kind === "image"; }).length >= MAX_IMAGES) { toast("Máximo de " + MAX_IMAGES + " imagens por mensagem"); return; }
         var item = { kind: "image", name: f.name || "imagem.jpg", size: f.size, url: null };
@@ -1184,6 +1359,20 @@
   function uploadAttachment(a) {
     return readAsDataURL(a.file).then(function (url) {
       return req("upload", { method: "POST", body: { name: a.name, data_url: url, kind: a.kind } });
+    });
+  }
+  function imageUploadName(a) {
+    var mime = String(a && a.url || "").match(/^data:(image\/[^;,]+)/i);
+    var type = mime ? mime[1].toLowerCase() : "image/jpeg";
+    var ext = type === "image/png" ? "png" : type === "image/webp" ? "webp" : type === "image/gif" ? "gif" : "jpg";
+    var base = String(a && a.name || "imagem").replace(/\.[^.]+$/, "") || "imagem";
+    return base + "." + ext;
+  }
+  function uploadImage(a) {
+    if (!a || !a.url) return Promise.reject(new Error("Imagem indisponível"));
+    return req("upload", { method: "POST", body: { name: imageUploadName(a), data_url: a.url, kind: "image" } }).then(function (up) {
+      if (!up || !up.path) throw new Error("Upload de imagem sem caminho");
+      return up;
     });
   }
   function transcribe(blob, mime) {
