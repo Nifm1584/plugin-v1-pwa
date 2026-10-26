@@ -25,6 +25,7 @@
 |---|---|
 | [38-validacao-versao-estavel.md](38-validacao-versao-estavel.md) | Validação funcional no computador e celular, coexistência com hermes-pwa, SHA congelado e limitação conhecida de imagens |
 | [39-congelamento-oficial-tag-release.md](39-congelamento-oficial-tag-release.md) | Congelamento oficial da 1.8.0b1, tag, Release e branch da quarta atualização |
+| [39-auditoria-multimidia.md](39-auditoria-multimidia.md) | Auditoria operacional do Hermes sobre persistência de imagens, rotas de mídia e saída de áudio/vídeo/arquivos; base técnica para a implementação multimídia |
 
 | Arquivo | Conteúdo |
 |---|---|
