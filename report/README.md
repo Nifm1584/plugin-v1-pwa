@@ -27,6 +27,8 @@
 | [39-congelamento-oficial-tag-release.md](39-congelamento-oficial-tag-release.md) | Congelamento oficial da 1.8.0b1, tag, Release e branch da quarta atualização |
 | [39-auditoria-multimidia.md](39-auditoria-multimidia.md) | Auditoria operacional do Hermes sobre persistência de imagens, rotas de mídia e saída de áudio/vídeo/arquivos; base técnica para a implementação multimídia |
 | [40-correcoes-multimidia.md](40-correcoes-multimidia.md) | Implementação de imagens persistentes e renderização de imagens, áudio, vídeo e documentos de saída do Hermes |
+| [41-validacao-mobile-fase-40.md](41-validacao-mobile-fase-40.md) | Resultados manuais confirmados pelo usuário no celular: persistência, imagem, PDF e áudio |
+| [42-pendencias-correcao-multimidia.md](42-pendencias-correcao-multimidia.md) | Pendências futuras: menu de download da imagem e menu do PDF com visualização/baixar |
 
 | Arquivo | Conteúdo |
 |---|---|
