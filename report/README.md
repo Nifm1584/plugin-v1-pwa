@@ -29,6 +29,7 @@
 | [40-correcoes-multimidia.md](40-correcoes-multimidia.md) | Implementação de imagens persistentes e renderização de imagens, áudio, vídeo e documentos de saída do Hermes |
 | [41-validacao-mobile-fase-40.md](41-validacao-mobile-fase-40.md) | Resultados manuais confirmados pelo usuário no celular: persistência, imagem, PDF e áudio |
 | [42-pendencias-correcao-multimidia.md](42-pendencias-correcao-multimidia.md) | Pendências futuras: menu de download da imagem e menu do PDF com visualização/baixar |
+| [43-validacao-computador-fase-40.md](43-validacao-computador-fase-40.md) | Validação manual do TREG PWA no computador/navegador, aprovada pelo usuário; complementa a validação mobile |
 
 | Arquivo | Conteúdo |
 |---|---|
