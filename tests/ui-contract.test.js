@@ -197,6 +197,7 @@ assert.ok(app.includes("function returnToDefaultProfile"), "o retorno ao perfil 
 assert.ok(app.includes("function isProfileApiError"), "o app deve distinguir erro de API do perfil");
 assert.ok(app.includes("function isLoginRequired"), "o app deve distinguir sessão expirada de erro de autorização");
 assert.ok(app.includes("handleProfileApiError"), "erros de API do perfil devem ter tratamento próprio");
+assert.ok(app.includes("detachActiveRun"), "a troca de perfil deve desanexar a execução ativa");
 assert.ok(app.includes("state.sessionsErrorAction"), "o erro do perfil deve oferecer ação na lista");
 assert.ok(app.includes("Voltar ao perfil padrão"), "a interface deve oferecer o retorno ao perfil padrão");
 assert.ok(app.includes('$("login-default")'), "o botão de retorno deve ter handler");

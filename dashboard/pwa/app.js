@@ -127,12 +127,16 @@
     state.sessionsError = null; state.sessionsErrorAction = null;
     state.messagesError = null; state.messagesErrorAction = null;
     clearSearchState();
+    detachActiveRun();
     if (state.current) closeSession();
     var sel = $("agent"); if (sel) sel.value = "default";
     updateAgentModel(); renderSessions();
     loadProfiles().then(function () { loadSessions(false, true); });
     loadCapabilities();
     toast("Perfil padrão selecionado");
+  }
+  function detachActiveRun() {
+    if (state.runCtx) finishRun(state.runCtx, { failed: true, skipReload: true });
   }
   function handleProfileApiError(error) {
     if (!isProfileApiError(error)) return false;
@@ -1660,6 +1664,7 @@
     if (name !== "default" && !state.multiplex) { toast("Ligue gateway.multiplex_profiles para usar outros agentes"); e.target.value = state.profile; return; }
     state.profile = name; state.searchAvailable = true;
     closeSearch(false); clearSearchState();
+    detachActiveRun();
     if (state.current) closeSession();
     try { localStorage.setItem("treg-pwa-profile", name); } catch (x) { }
     updateAgentModel(); state.sessions = []; renderSessions(); loadSessions(false, true); loadCapabilities();
