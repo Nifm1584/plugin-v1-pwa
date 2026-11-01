@@ -30,6 +30,7 @@
 | [41-validacao-mobile-fase-40.md](41-validacao-mobile-fase-40.md) | Resultados manuais confirmados pelo usuário no celular: persistência, imagem, PDF e áudio |
 | [42-pendencias-correcao-multimidia.md](42-pendencias-correcao-multimidia.md) | Pendências futuras: menu de download da imagem e menu do PDF com visualização/baixar |
 | [43-validacao-computador-fase-40.md](43-validacao-computador-fase-40.md) | Validação manual do TREG PWA no computador/navegador, aprovada pelo usuário; complementa a validação mobile |
+| [45-congelamento-versao-estavel-quarta-atualizacao.md](45-congelamento-versao-estavel-quarta-atualizacao.md) | Congelamento oficial da quarta atualização no commit `9b34073`, tag, Release, verificações e pendências; o número 44 fica reservado para o diagnóstico da próxima fase |
 
 | Arquivo | Conteúdo |
 |---|---|
