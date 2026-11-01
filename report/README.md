@@ -34,6 +34,7 @@
 | [46-autenticacao-multiperfil-treg-pwa.md](46-autenticacao-multiperfil-treg-pwa.md) | Correção da autenticação e autorização por perfil, classificação de erros, retorno ao perfil padrão, testes executados e pendência da `API_SERVER_KEY` externa |
 | [48-autenticacao-multiperfil-chave-administrada.md](48-autenticacao-multiperfil-chave-administrada.md) | Precedência da chave administrada do Hermes, compatibilidade com o escopo por perfil, testes e procedimento de homologação na VPS |
 | [49-auditoria-comparativa-perfis-pwa.md](49-auditoria-comparativa-perfis-pwa.md) | Comparação do sistema de perfis entre o hermes-pwa original e o TREG: listagem, seleção, fluxo de conversas, autenticação e causas prováveis |
+| [50-investigacao-historica-autenticacao-treg-pwa.md](50-investigacao-historica-autenticacao-treg-pwa.md) | Histórico das alterações de autenticação entre o congelado, a Fase 2 e a Fase 3; commits, funções, 401/403, impacto e diagnóstico |
 
 | Arquivo | Conteúdo |
 |---|---|
