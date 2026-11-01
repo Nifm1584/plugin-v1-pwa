@@ -1,5 +1,6 @@
 import asyncio
 import importlib.util
+import os
 import sys
 from pathlib import Path
 from unittest.mock import patch
@@ -85,12 +86,14 @@ def test_capabilities_tolerates_old_gateway():
 
 def test_profile_api_key_reads_profile_env(tmp_path):
     (tmp_path / ".env").write_text("API_SERVER_KEY=profile-key-1234\n", encoding="utf-8")
-    with patch.object(plugin_api, "_profile_home", lambda profile: tmp_path):
+    with patch.object(plugin_api, "_profile_home", lambda profile: tmp_path), \
+            patch.object(plugin_api, "_managed_env_value", lambda key: ""):
         assert plugin_api._api_key("work") == "profile-key-1234"
 
 
 def test_profile_api_key_missing_is_config_error(tmp_path):
-    with patch.object(plugin_api, "_profile_home", lambda profile: tmp_path):
+    with patch.object(plugin_api, "_profile_home", lambda profile: tmp_path), \
+            patch.object(plugin_api, "_managed_env_value", lambda key: ""):
         try:
             plugin_api._api_key("work")
         except HTTPException as exc:
@@ -98,6 +101,43 @@ def test_profile_api_key_missing_is_config_error(tmp_path):
             assert exc.detail["code"] == "profile_api_key_missing"
         else:
             raise AssertionError("perfil sem API_SERVER_KEY deveria falhar")
+
+
+def test_profile_api_key_prefers_managed_env_over_profile_env(tmp_path):
+    profile_home = tmp_path / "profile"
+    profile_home.mkdir()
+    (profile_home / ".env").write_text("API_SERVER_KEY=profile-key-1234\n", encoding="utf-8")
+    managed_dir = tmp_path / "managed"
+    managed_dir.mkdir()
+    (managed_dir / ".env").write_text("API_SERVER_KEY=managed-key-5678\n", encoding="utf-8")
+
+    with patch.object(plugin_api, "_profile_home", lambda profile: profile_home), \
+            patch.dict(os.environ, {"HERMES_MANAGED_DIR": str(managed_dir)}):
+        assert plugin_api._api_key("work") == "managed-key-5678"
+
+
+def test_managed_env_value_reads_override(tmp_path):
+    managed_dir = tmp_path / "managed"
+    managed_dir.mkdir()
+    (managed_dir / ".env").write_text("API_SERVER_KEY=managed-key-5678\n", encoding="utf-8")
+
+    with patch.dict(os.environ, {"HERMES_MANAGED_DIR": str(managed_dir)}):
+        assert plugin_api._managed_env_value("API_SERVER_KEY") == "managed-key-5678"
+
+
+def test_profile_api_key_does_not_use_default_process_key(tmp_path):
+    managed_dir = tmp_path / "managed"
+    managed_dir.mkdir()
+    with patch.object(plugin_api, "_profile_home", lambda profile: tmp_path), \
+            patch.dict(os.environ, {"HERMES_MANAGED_DIR": str(managed_dir),
+                                     "API_SERVER_KEY": "default-process-key-1234"}):
+        try:
+            plugin_api._api_key("work")
+        except HTTPException as exc:
+            assert exc.status_code == 503
+            assert exc.detail["code"] == "profile_api_key_missing"
+        else:
+            raise AssertionError("perfil não deve herdar a chave do processo padrão")
 
 
 def test_gateway_auth_errors_are_not_session_errors():

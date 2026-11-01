@@ -61,6 +61,20 @@ def _env_value(path: Path, key: str) -> str:
     return ""
 
 
+def _managed_env_value(key: str) -> str:
+    try:
+        from hermes_cli.managed_scope import load_managed_env
+        value = (load_managed_env().get(key) or "").strip()
+        if value:
+            return value
+    except Exception:
+        pass
+    override = (os.environ.get("HERMES_MANAGED_DIR") or "").strip()
+    if override:
+        return _env_value(Path(override) / ".env", key)
+    return _env_value(Path("/etc/hermes") / ".env", key)
+
+
 def _profile_home(profile: str) -> Path:
     try:
         from hermes_cli.profiles import get_profile_dir
@@ -86,20 +100,25 @@ def _profile_api_key(profile: str) -> str:
             "profile": profile,
             "message": f"O perfil '{profile}' não está disponível no Hermes.",
         })
-    key = _env_value(home / ".env", "API_SERVER_KEY")
+    key = ""
+    try:
+        from agent.secret_scope import build_profile_secret_scope
+        key = (build_profile_secret_scope(home).get("API_SERVER_KEY") or "").strip()
+    except Exception:
+        key = ""
+    managed_key = _managed_env_value("API_SERVER_KEY")
+    if managed_key:
+        key = managed_key
     if not key:
-        try:
-            from agent.secret_scope import build_profile_secret_scope
-            key = (build_profile_secret_scope(home).get("API_SERVER_KEY") or "").strip()
-        except Exception:
-            key = ""
+        key = _env_value(home / ".env", "API_SERVER_KEY")
     if not key:
         raise HTTPException(status_code=503, detail={
             "code": "profile_api_key_missing",
             "profile": profile,
             "message": (
-                f"O perfil '{profile}' não tem API_SERVER_KEY configurada. "
-                "Adicione a chave no .env desse perfil e reinicie o gateway do Hermes."
+                f"O perfil '{profile}' não tem API_SERVER_KEY no escopo. Configure a mesma chave "
+                "do perfil padrão no .env desse perfil ou no escopo administrado (/etc/hermes/.env) "
+                "e reinicie o gateway do Hermes."
             ),
         })
     return key
@@ -136,8 +155,9 @@ def _gateway_error(profile: Optional[str], status: int, detail: Any) -> HTTPExce
                 "code": "profile_api_auth_failed",
                 "profile": prof,
                 "message": (
-                    f"O gateway recusou a chave de API do perfil '{prof}'. "
-                    "Confira API_SERVER_KEY no .env desse perfil e reinicie o gateway do Hermes."
+                    f"O gateway recusou a chave de API do perfil '{prof}'. Confira se a mesma "
+                    "API_SERVER_KEY do perfil padrão está no .env do perfil ou no escopo "
+                    "administrado (/etc/hermes/.env) e reinicie o gateway do Hermes."
                 ),
             })
         return HTTPException(status_code=503, detail={
