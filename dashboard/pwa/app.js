@@ -90,9 +90,19 @@
     if (!prof || prof === "default") return path;
     return path + (path.indexOf("?") >= 0 ? "&" : "?") + "profile=" + encodeURIComponent(prof);
   }
+  function isProfileApiError(error) {
+    var code = (error && error.code) || "";
+    return code.indexOf("profile_") === 0 || code === "api_key_missing" || code === "api_key_invalid";
+  }
+  function isLoginRequired(error) {
+    if (!error) return false;
+    if (isProfileApiError(error)) return false;
+    if (error.code === "session_expired") return true;
+    return error.status === 401 && error.code !== "forbidden";
+  }
   function callApi(promise) {
     return promise.catch(function (e) {
-      if (e && (e.code === "auth" || e.status === 401 || e.status === 403)) { showLogin(); throw new Error("login"); }
+      if (isLoginRequired(e)) { showLogin(); throw new Error("login"); }
       throw e;
     });
   }
@@ -102,7 +112,53 @@
   }
 
   // ───────────────────────── login embutido (sessão do dashboard expirada)
-  function showLogin() { $("login").classList.remove("hidden"); }
+  function showLogin() {
+    var back = $("login-default");
+    if (back) back.classList.toggle("hidden", !state.profile || state.profile === "default");
+    $("login").classList.remove("hidden");
+  }
+  function returnToDefaultProfile() {
+    state.profile = "default";
+    try { localStorage.setItem("treg-pwa-profile", "default"); } catch (e) { }
+    $("login").classList.add("hidden");
+    $("login-err").textContent = "";
+    $("login-pass").value = "";
+    state.sessions = []; state.sessionsOffset = 0; state.sessionsHasMore = false;
+    state.sessionsError = null; state.sessionsErrorAction = null;
+    state.messagesError = null; state.messagesErrorAction = null;
+    clearSearchState();
+    if (state.current) closeSession();
+    var sel = $("agent"); if (sel) sel.value = "default";
+    updateAgentModel(); renderSessions();
+    loadProfiles().then(function () { loadSessions(false, true); });
+    loadCapabilities();
+    toast("Perfil padrão selecionado");
+  }
+  function handleProfileApiError(error) {
+    if (!isProfileApiError(error)) return false;
+    var message = (error && error.message) || "Falha de autorização da API do perfil.";
+    var canReturn = state.profile && state.profile !== "default";
+    if (canReturn && message.indexOf("Voltar ao perfil padrão") < 0) {
+      message += " Você pode voltar ao perfil padrão.";
+    }
+    var previous = state.current ? state.messagesError
+      : (state.searchQuery.trim().length >= 2 ? state.searchError : state.sessionsError);
+    if (state.current) {
+      state.messagesError = message;
+      state.messagesErrorAction = canReturn ? "default" : "";
+      renderChatStatus();
+    } else if (state.searchQuery.trim().length >= 2) {
+      state.searchError = message;
+      state.searchErrorAction = canReturn ? "default" : "";
+      renderSessions();
+    } else {
+      state.sessionsError = message;
+      state.sessionsErrorAction = canReturn ? "default" : "";
+      renderSessions();
+    }
+    if (previous !== message) toast(message, 6000);
+    return true;
+  }
   $("login-form").addEventListener("submit", function (e) {
     e.preventDefault(); $("login-err").textContent = "";
     if (!api) { $("login-err").textContent = "Camada de API indisponível"; return; }
@@ -110,6 +166,8 @@
       .then(function () { $("login").classList.add("hidden"); boot(); })
       .catch(function (x) { $("login-err").textContent = (x && (x.detail || x.message)) || "Usuário ou senha inválidos"; });
   });
+  var loginDefault = $("login-default");
+  if (loginDefault) loginDefault.addEventListener("click", returnToDefaultProfile);
 
 
   // ───────────────────────── diálogos próprios (sem prompt/confirm do navegador)
@@ -132,13 +190,17 @@
   function confirmDlg(title, text, ok) { return dialog({ title: title, text: text, input: false, ok: ok || "Confirmar", danger: true }).then(function (v) { return v === true; }); }
 
   // ───────────────────────── lista de sessões
-  function setListStatus(text, retry) {
+  function setListStatus(text, retry, actionLabel, action) {
     var el = $("list-status"); el.innerHTML = "";
     if (!text) { el.classList.add("hidden"); return; }
     var span = document.createElement("span"); span.textContent = text; el.appendChild(span);
     if (retry) {
       var btn = document.createElement("button"); btn.type = "button"; btn.textContent = "Tentar novamente";
       btn.addEventListener("click", retry); el.appendChild(btn);
+    }
+    if (actionLabel && action) {
+      var go = document.createElement("button"); go.type = "button"; go.textContent = actionLabel;
+      go.addEventListener("click", action); el.appendChild(go);
     }
     el.classList.remove("hidden");
   }
@@ -195,8 +257,14 @@
     $("btn-more").disabled = state.sessionsLoading;
     $("btn-more").textContent = state.sessionsLoading ? "Carregando…" : "Carregar mais";
     if (loading) setListStatus(searching ? "Buscando no histórico…" : "Carregando conversas…");
-    else if (searching && state.searchError) setListStatus(state.searchError, function () { performSearch(q); });
-    else if (!searching && state.sessionsError) setListStatus(state.sessionsError, function () { loadSessions(false, true); });
+    else if (searching && state.searchError) setListStatus(state.searchError,
+      state.searchErrorAction === "default" ? null : function () { performSearch(q); },
+      state.searchErrorAction === "default" ? "Voltar ao perfil padrão" : null,
+      state.searchErrorAction === "default" ? returnToDefaultProfile : null);
+    else if (!searching && state.sessionsError) setListStatus(state.sessionsError,
+      state.sessionsErrorAction === "default" ? null : function () { loadSessions(false, true); },
+      state.sessionsErrorAction === "default" ? "Voltar ao perfil padrão" : null,
+      state.sessionsErrorAction === "default" ? returnToDefaultProfile : null);
     else if (searching && !state.searchAvailable) setListStatus("Busca no histórico indisponível; mostrando resultados das conversas carregadas.");
     else setListStatus("");
     items.forEach(function (s) {
@@ -221,7 +289,7 @@
     var prof = state.profile;
     var offset = state.sessionsOffset;
     var seq = ++state.sessionsSeq;
-    state.sessionsLoading = true; state.sessionsError = null;
+    state.sessionsLoading = true; state.sessionsError = null; state.sessionsErrorAction = null;
     if (!silent) renderSessions();
     return api.getSessions({ limit: 80, offset: offset, profile: prof }).then(function (d) {
       if (seq !== state.sessionsSeq || prof !== state.profile) return;
@@ -231,7 +299,8 @@
       state.sessionsHasMore = !!d.hasMore && d.items.length > 0;
     }).catch(function (e) {
       if (seq !== state.sessionsSeq || prof !== state.profile) return;
-      if (e.code === "auth" || e.status === 401 || e.status === 403) { showLogin(); return; }
+      if (isLoginRequired(e)) { showLogin(); return; }
+      if (handleProfileApiError(e)) return;
       state.sessionsError = "Não foi possível carregar as conversas. " + (e.message || "Tente novamente.");
       if (!silent) toast("Erro ao listar: " + e.message);
     }).then(function () {
@@ -259,14 +328,15 @@
     }
     var prof = state.profile;
     var seq = ++state.searchSeq;
-    state.searchLoading = true; state.searchError = null; renderSessions();
+    state.searchLoading = true; state.searchError = null; state.searchErrorAction = null; renderSessions();
     api.searchHistory(q, { profile: prof, limit: 50 }).then(function (d) {
       if (seq !== state.searchSeq || prof !== state.profile) return;
       state.searchResults = mergeSearchResults(local, d.items, prof);
       state.searchAvailable = true;
     }).catch(function (e) {
       if (seq !== state.searchSeq || prof !== state.profile) return;
-      if (e.code === "auth" || e.status === 401 || e.status === 403) { showLogin(); return; }
+      if (isLoginRequired(e)) { showLogin(); return; }
+      if (handleProfileApiError(e)) { state.searchResults = mergeSearchResults(local, [], prof); return; }
       state.searchResults = mergeSearchResults(local, [], prof);
       if (e.code === "not_found" || e.code === "unsupported") {
         state.searchAvailable = false;
@@ -281,7 +351,7 @@
   }
   function clearSearchState() {
     clearTimeout(searchTimer);
-    state.searchQuery = ""; state.searchResults = null; state.searchError = null;
+    state.searchQuery = ""; state.searchResults = null; state.searchError = null; state.searchErrorAction = null;
     state.searchLoading = false; state.searchSeq += 1; state.filter = "";
     $("search").value = "";
   }
@@ -302,7 +372,7 @@
   var searchTimer = null;
   $("search").addEventListener("input", function (e) {
     state.searchQuery = e.target.value;
-    state.searchResults = null; state.searchError = null; state.searchSeq += 1;
+    state.searchResults = null; state.searchError = null; state.searchErrorAction = null; state.searchSeq += 1;
     $("sessions").scrollTop = 0;
     clearTimeout(searchTimer);
     var q = state.searchQuery.trim();
@@ -486,6 +556,10 @@
     if (state.messagesError) {
       var retry = document.createElement("button"); retry.type = "button"; retry.textContent = "Tentar novamente";
       retry.addEventListener("click", function () { loadMessages(); }); el.appendChild(retry);
+      if (state.messagesErrorAction === "default") {
+        var back = document.createElement("button"); back.type = "button"; back.textContent = "Voltar ao perfil padrão";
+        back.addEventListener("click", returnToDefaultProfile); el.appendChild(back);
+      }
     }
     el.classList.remove("hidden");
   }
@@ -519,7 +593,7 @@
     if (!state.current) return Promise.resolve();
     var id = state.current.id;
     var seq = (state.messagesSeq || 0) + 1; state.messagesSeq = seq;
-    if (!silent) { state.messagesLoading = true; state.messagesError = null; renderChatStatus(); }
+    if (!silent) { state.messagesLoading = true; state.messagesError = null; state.messagesErrorAction = null; renderChatStatus(); }
     return api.getMessages(id, state.current.profile).then(function (data) {
       if (seq !== state.messagesSeq || !state.current || state.current.id !== id) return;
       var list = (data || []).filter(function (m) { return (m.role === "user" || m.role === "assistant") && m.content && String(m.content).trim(); });
@@ -529,7 +603,8 @@
       if (changed || !silent) renderMessages();
     }).catch(function (e) {
       if (seq !== state.messagesSeq) return;
-      if (e.code === "auth" || e.status === 401 || e.status === 403) { showLogin(); return; }
+      if (isLoginRequired(e)) { showLogin(); return; }
+      if (handleProfileApiError(e)) return;
       state.messagesError = "Não foi possível carregar as mensagens. " + (e.message || "Tente novamente.");
       if (!silent) toast("Erro ao carregar: " + e.message);
     }).then(function () {
@@ -993,7 +1068,8 @@
       toast("Pedido de parada enviado");
     }).catch(function (e) {
       ctx.stopping = false;
-      if (e.code === "auth" || e.status === 401 || e.status === 403) { showLogin(); updateStopButton(); return; }
+      if (isLoginRequired(e)) { showLogin(); updateStopButton(); return; }
+      if (handleProfileApiError(e)) { updateStopButton(); return; }
       if (e.code === "not_found" || e.code === "unsupported") {
         state.capabilities = state.capabilities || {};
         state.capabilities.features = state.capabilities.features || {};
@@ -1183,7 +1259,8 @@
       finishRun(ctx);
     } else if (ev === "run.failed" || ev === "error") {
       ctx.approvals.forEach(function (c) { c.expire(); });
-      var msg = d.error || (d.message && (d.message.detail || d.message)) || "erro";
+      var msg = d.error || (d.message && (d.message.detail || d.message)) || d.message || "erro";
+      if (d.code) handleProfileApiError({ code: d.code, message: typeof msg === "string" ? msg : JSON.stringify(msg) });
       var followError = nearBottom();
       $("messages").appendChild(bubble({ role: "assistant", content: typeof msg === "string" ? msg : JSON.stringify(msg), error: true }));
       if (followError) scrollBottom(); else updateScrollButton();
@@ -1219,7 +1296,8 @@
       })
       .then(function () { if (!ctx.finished) return resumeRun(ctx); })
       .catch(function (e) {
-        if (e.code === "auth" || e.message === "login" || e.status === 401 || e.status === 403) { showLogin(); finishRun(ctx); return; }
+        if (isLoginRequired(e) || e.message === "login") { showLogin(); finishRun(ctx); return; }
+        if (isProfileApiError(e)) { handleProfileApiError(e); finishRun(ctx); return; }
         if (!ctx.finished) return resumeRun(ctx);
       });
   }
@@ -1246,6 +1324,7 @@
           resolve();
         }).catch(function (e) {
           if (e.message === "login") { finishRun(ctx); return resolve(); }
+          if (isProfileApiError(e)) { handleProfileApiError(e); finishRun(ctx); return resolve(); }
           tries += 1;
           if (tries > 240) { runEvent(ctx, "run.failed", { error: "Não foi possível acompanhar a execução (" + e.message + "). Recarregue a conversa." }); return resolve(); }
           setTimeout(poll, 5000);
@@ -1565,7 +1644,12 @@
       sel.value = state.profile; updateAgentModel();
       $("agentbar") && null;
       document.querySelector(".agentbar").classList.toggle("hidden", state.profiles.length < 2);
-    }).catch(function () { });
+    }).catch(function (e) {
+      if (e && e.message === "login") return;
+      if (isLoginRequired(e)) { showLogin(); return; }
+      if (handleProfileApiError(e)) return;
+      toast("Não foi possível carregar os perfis.", 4000);
+    });
   }
   function updateAgentModel() {
     var p = state.profiles.filter(function (x) { return x.name === state.profile; })[0];
@@ -1587,9 +1671,11 @@
     api.getCapabilities(prof).then(function (caps) {
       if (prof !== state.profile) return;
       state.capabilities = caps; updateStopButton();
+      if (caps.error && isProfileApiError(caps.error)) handleProfileApiError(caps.error);
     }).catch(function (e) {
       if (prof !== state.profile) return;
-      if (e.code === "auth") showLogin();
+      if (isLoginRequired(e)) { showLogin(); state.capabilities = null; updateStopButton(); return; }
+      if (handleProfileApiError(e)) { state.capabilities = null; updateStopButton(); return; }
       state.capabilities = null; updateStopButton();
     });
   }
@@ -1619,7 +1705,9 @@
   function boot() {
     initTheme(); applyViewport(); updateNetwork(); updateComposerState(); loadProfileAvatar();
     try { state.profile = localStorage.getItem("treg-pwa-profile") || "default"; } catch (x) { }
-    req("me").then(function (d) { state.model = (d && d.model) || {}; }).catch(function () { });
+    req("me").then(function (d) { state.model = (d && d.model) || {}; }).catch(function (e) {
+      if (isLoginRequired(e)) showLogin();
+    });
     loadCapabilities();
     loadProfiles().then(function () { loadSessions(false, true); });
     clearInterval(state.pollList); state.pollList = setInterval(function () { if (!state.current || $("chat").classList.contains("hidden")) loadSessions(true, true); }, 30000);

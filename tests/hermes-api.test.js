@@ -183,11 +183,62 @@ async function testLegacyCapabilitiesAndAuth() {
   });
   const caps = await api.getCapabilities();
   assert.equal(caps.unavailable, true);
+  assert.equal(caps.error.status, 404, "o erro do gateway deve ser preservado nas capabilities");
   assert.equal(TregApi.feature(caps, "run_stop"), null);
   await assert.rejects(
     api.getSessions({ limit: 80 }),
-    function (error) { return error && error.code === "auth" && error.status === 401; }
+    function (error) { return error && error.code === "session_expired" && error.status === 401; }
   );
+}
+
+async function testAuthErrorClassification() {
+  const cases = [
+    { status: 401, body: { detail: "unauthorized" }, code: "session_expired" },
+    { status: 401, body: { detail: { code: "profile_api_key_missing", message: "sem chave" } }, code: "profile_api_key_missing" },
+    { status: 503, body: { detail: { code: "profile_api_key_missing", message: "sem chave" } }, code: "profile_api_key_missing" },
+    { status: 401, body: { detail: { code: "profile_api_auth_failed", message: "chave recusada" } }, code: "profile_api_auth_failed" },
+    { status: 403, body: { detail: { code: "profile_forbidden", message: "proibido" } }, code: "profile_forbidden" },
+    { status: 403, body: { detail: "forbidden" }, code: "forbidden" },
+    { status: 502, body: { detail: { code: "gateway_unavailable", message: "gateway" } }, code: "gateway_unavailable" }
+  ];
+  for (const item of cases) {
+    const api = TregApi.create({
+      base: "api/",
+      origin: "https://treg.example",
+      pageUrl: "https://treg.example/api/plugins/treg-pwa/",
+      fetch: mockFetch(function () { return response(item.body, item.status); })
+    });
+    await assert.rejects(
+      api.getSessions({ limit: 80 }),
+      function (error) {
+        return error && error.status === item.status && error.code === item.code;
+      },
+      "status " + item.status + " deve mapear para " + item.code
+    );
+  }
+}
+
+async function testEventStreamAuthClassification() {
+  const cases = [
+    { status: 401, body: { detail: "unauthorized" }, code: "session_expired" },
+    { status: 503, body: { detail: { code: "profile_api_key_missing", message: "sem chave" } }, code: "profile_api_key_missing" },
+    { status: 403, body: { detail: { code: "profile_forbidden", message: "proibido" } }, code: "profile_forbidden" }
+  ];
+  for (const item of cases) {
+    const api = TregApi.create({
+      base: "api/",
+      origin: "https://treg.example",
+      pageUrl: "https://treg.example/api/plugins/treg-pwa/",
+      fetch: mockFetch(function () { return response(item.body, item.status); })
+    });
+    await assert.rejects(
+      api.runEvents("run_1", "work"),
+      function (error) {
+        return error && error.status === item.status && error.code === item.code;
+      },
+      "SSE status " + item.status + " deve mapear para " + item.code
+    );
+  }
 }
 
 async function testResolvedPaths() {
@@ -245,9 +296,11 @@ async function main() {
   await testMutationsAndCapabilities();
   await testCreateSession();
   await testLegacyCapabilitiesAndAuth();
+  await testAuthErrorClassification();
+  await testEventStreamAuthClassification();
   await testResolvedPaths();
   await testEventStream();
-  console.log("PASS hermes-api: paginação, busca, criação, pin, stop, SSE, capabilities e auth");
+  console.log("PASS hermes-api: paginação, busca, criação, pin, stop, SSE, capabilities e classificação de erros");
 }
 
 main().catch(function (error) {

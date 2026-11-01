@@ -171,6 +171,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .login-card h1 { margin: 0 0 6px; font-size: 20px; text-align: center; }
 .login-card input { border: 1px solid var(--line); background: var(--input-bg); color: var(--text); padding: 12px; border-radius: 10px; font-size: 16px; }
 .primary.wide { background: var(--accent); color: var(--on-accent); border: 0; padding: 12px; border-radius: 10px; font-weight: 700; cursor: pointer; }
+.login-card .btn.ghost.wide { width: 100%; padding: 10px; border-radius: 10px; }
 .err { color: var(--danger); min-height: 1em; margin: 0; font-size: 13px; text-align: center; }
 .toast { position: fixed; left: 50%; bottom: calc(80px + var(--safe-b)); transform: translateX(-50%); background: var(--toast-bg); color: var(--toast-text); padding: 10px 14px; border-radius: 10px; font-size: 14px; z-index: 40; box-shadow: var(--shadow); max-width: 90vw; }
 

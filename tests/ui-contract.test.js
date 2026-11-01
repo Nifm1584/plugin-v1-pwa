@@ -20,7 +20,7 @@ const requiredIds = [
   "header-avatar-glyph", "header-avatar-img", "profile-avatar-preview", "profile-avatar-glyph",
   "profile-avatar-img", "btn-avatar-pick", "btn-avatar-remove", "avatar-file", "avatar-status",
   "btn-stop", "chat-status", "btn-rec-cancel", "search", "search-row", "btn-search", "sessions", "messages",
-  "btn-scroll-bottom", "chat-avatar", "app-version"
+  "btn-scroll-bottom", "chat-avatar", "app-version", "login-default"
 ];
 
 for (const id of requiredIds) {
@@ -191,6 +191,17 @@ assert.ok(app.includes("api.searchHistory"), "busca remota não usa a camada de 
 assert.ok(app.includes("api.stopRun"), "parada de execução não usa a camada de API");
 assert.ok(app.includes("mergeSessions"), "paginação não reutiliza a mesclagem");
 assert.ok(!/\bfetch\s*\(/.test(app), "app.js não deve chamar fetch diretamente");
+
+assert.match(html, /id="login-default"[^>]*class="btn ghost wide hidden"/, "o login deve ter o retorno ao perfil padrão oculto por padrão");
+assert.ok(app.includes("function returnToDefaultProfile"), "o retorno ao perfil padrão deve estar implementado");
+assert.ok(app.includes("function isProfileApiError"), "o app deve distinguir erro de API do perfil");
+assert.ok(app.includes("function isLoginRequired"), "o app deve distinguir sessão expirada de erro de autorização");
+assert.ok(app.includes("handleProfileApiError"), "erros de API do perfil devem ter tratamento próprio");
+assert.ok(app.includes("state.sessionsErrorAction"), "o erro do perfil deve oferecer ação na lista");
+assert.ok(app.includes("Voltar ao perfil padrão"), "a interface deve oferecer o retorno ao perfil padrão");
+assert.ok(app.includes('$("login-default")'), "o botão de retorno deve ter handler");
+assert.ok(!app.includes('e.code === "auth" || e.status === 401 || e.status === 403'), "401/403 não devem ser tratados todos como login");
+assert.ok(/\.login-card \.btn\.ghost\.wide\s*\{[^}]*width:\s*100%/.test(css), "o botão de retorno deve ocupar a largura do login");
 
 const btnSearchIndex = listHeaderActions.indexOf('id="btn-search"');
 const btnHeaderMenuIndex = listHeaderActions.indexOf('id="btn-header-menu"');

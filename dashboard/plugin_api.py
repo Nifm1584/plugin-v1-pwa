@@ -45,43 +45,161 @@ def _api_base() -> str:
     return f"http://{host}:{port}"
 
 
-def _api_key() -> str:
-    key = (os.environ.get("API_SERVER_KEY") or "").strip()
-    if not key:
-        try:  # .env do HERMES_HOME (instalações sem Docker)
-            from hermes_cli.config import get_env_path
-            for line in Path(get_env_path()).read_text(encoding="utf-8").splitlines():
-                if line.strip().startswith("API_SERVER_KEY="):
-                    key = line.split("=", 1)[1].strip().strip("'\"")
-                    break
+def _env_value(path: Path, key: str) -> str:
+    try:
+        for raw in path.read_text(encoding="utf-8").splitlines():
+            line = raw.strip()
+            if not line or line.startswith("#"):
+                continue
+            if line.startswith("export "):
+                line = line[len("export "):].lstrip()
+            name, sep, value = line.partition("=")
+            if sep and name.strip() == key:
+                return value.strip().strip("'\"")
+    except Exception:
+        pass
+    return ""
+
+
+def _profile_home(profile: str) -> Path:
+    try:
+        from hermes_cli.profiles import get_profile_dir
+        return Path(get_profile_dir(profile))
+    except Exception:
+        try:
+            from hermes_constants import get_hermes_home
+            return Path(get_hermes_home()) / "profiles" / profile
         except Exception:
-            pass
+            raise HTTPException(status_code=503, detail={
+                "code": "profile_resolution_failed",
+                "message": f"Não foi possível localizar a configuração do perfil '{profile}'.",
+            })
+
+
+def _profile_api_key(profile: str) -> str:
+    if not _PROFILE_RE.match(profile):
+        raise HTTPException(status_code=400, detail="perfil inválido")
+    home = _profile_home(profile)
+    if not home.is_dir():
+        raise HTTPException(status_code=404, detail={
+            "code": "profile_not_found",
+            "profile": profile,
+            "message": f"O perfil '{profile}' não está disponível no Hermes.",
+        })
+    key = _env_value(home / ".env", "API_SERVER_KEY")
     if not key:
-        raise HTTPException(status_code=503, detail=(
-            "API_SERVER_KEY não configurada. O PWA usa o API server do gateway; defina "
-            "API_SERVER_ENABLED=true, API_SERVER_HOST=0.0.0.0 e API_SERVER_KEY no .env/ambiente e reinicie."))
+        try:
+            from agent.secret_scope import build_profile_secret_scope
+            key = (build_profile_secret_scope(home).get("API_SERVER_KEY") or "").strip()
+        except Exception:
+            key = ""
+    if not key:
+        raise HTTPException(status_code=503, detail={
+            "code": "profile_api_key_missing",
+            "profile": profile,
+            "message": (
+                f"O perfil '{profile}' não tem API_SERVER_KEY configurada. "
+                "Adicione a chave no .env desse perfil e reinicie o gateway do Hermes."
+            ),
+        })
     return key
 
 
-def _client():
+def _api_key(profile: Optional[str] = None) -> str:
+    prof = (profile or "").strip().lower()
+    if not prof or prof == "default":
+        key = (os.environ.get("API_SERVER_KEY") or "").strip()
+        if not key:
+            try:  # .env do HERMES_HOME (instalações sem Docker)
+                from hermes_cli.config import get_env_path
+                key = _env_value(Path(get_env_path()), "API_SERVER_KEY")
+            except Exception:
+                pass
+        if not key:
+            raise HTTPException(status_code=503, detail={
+                "code": "api_key_missing",
+                "message": (
+                    "API_SERVER_KEY não configurada. O PWA usa o API server do gateway; defina "
+                    "API_SERVER_ENABLED=true, API_SERVER_HOST=0.0.0.0 e API_SERVER_KEY no .env/ambiente e reinicie."
+                ),
+            })
+        return key
+    return _profile_api_key(prof)
+
+
+def _gateway_error(profile: Optional[str], status: int, detail: Any) -> HTTPException:
+    prof = (profile or "").strip().lower()
+    named = bool(prof and prof != "default")
+    if status == 401:
+        if named:
+            return HTTPException(status_code=503, detail={
+                "code": "profile_api_auth_failed",
+                "profile": prof,
+                "message": (
+                    f"O gateway recusou a chave de API do perfil '{prof}'. "
+                    "Confira API_SERVER_KEY no .env desse perfil e reinicie o gateway do Hermes."
+                ),
+            })
+        return HTTPException(status_code=503, detail={
+            "code": "api_key_invalid",
+            "message": "O gateway recusou a API_SERVER_KEY do PWA. Confira a configuração do servidor e reinicie o gateway.",
+        })
+    if status == 403:
+        if named:
+            return HTTPException(status_code=403, detail={
+                "code": "profile_forbidden",
+                "profile": prof,
+                "message": f"O perfil '{prof}' não autorizou esta operação.",
+            })
+        return HTTPException(status_code=403, detail={
+            "code": "forbidden",
+            "message": "Acesso proibido pelo gateway do Hermes.",
+        })
+    if status == 404 and named:
+        return HTTPException(status_code=404, detail={
+            "code": "profile_not_found",
+            "profile": prof,
+            "message": f"O perfil '{prof}' não está disponível no gateway.",
+        })
+    if status >= 500:
+        return HTTPException(status_code=502, detail={
+            "code": "gateway_unavailable",
+            "message": f"O gateway do Hermes respondeu com erro interno (HTTP {status}). Tente novamente.",
+        })
+    return HTTPException(status_code=status, detail=detail)
+
+
+def _gateway_sse_error(profile: Optional[str], status: int, detail: Any) -> Dict[str, Any]:
+    exc = _gateway_error(profile, status, detail)
+    payload = dict(exc.detail) if isinstance(exc.detail, dict) else {"message": str(exc.detail or "erro")}
+    payload.setdefault("status", exc.status_code)
+    return payload
+
+
+def _client(profile: Optional[str] = None):
     import httpx
-    return httpx.AsyncClient(base_url=_api_base(), headers={"Authorization": f"Bearer {_api_key()}"},
+    return httpx.AsyncClient(base_url=_api_base(), headers={"Authorization": f"Bearer {_api_key(profile)}"},
                              timeout=httpx.Timeout(30.0, read=300.0))
 
 
 async def _proxy_json(method: str, path: str, *, params: Optional[Dict[str, Any]] = None,
-                      body: Optional[Dict[str, Any]] = None) -> Any:
+                      body: Optional[Dict[str, Any]] = None, profile: Optional[str] = None) -> Any:
     try:
-        async with _client() as c:
+        async with _client(profile) as c:
             r = await c.request(method, path, params=params, json=body)
+    except HTTPException:
+        raise
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Gateway API indisponível ({_api_base()}): {exc}")
+        raise HTTPException(status_code=502, detail={
+            "code": "gateway_unavailable",
+            "message": f"Gateway API indisponível ({_api_base()}): {exc}",
+        })
     if r.status_code >= 400:
         try:
             detail = r.json()
         except Exception:
             detail = r.text[:300]
-        raise HTTPException(status_code=r.status_code, detail=detail)
+        raise _gateway_error(profile, r.status_code, detail)
     if not r.content:
         return {"ok": True}
     try:
@@ -230,9 +348,12 @@ async def capabilities(profile: Optional[str] = None) -> Dict[str, Any]:
     gateway: Any = None
     error: Optional[Dict[str, Any]] = None
     try:
-        gateway = await _proxy_json("GET", _pfx(profile) + "/v1/capabilities")
+        gateway = await _proxy_json("GET", _pfx(profile) + "/v1/capabilities", profile=profile)
     except HTTPException as exc:
-        error = {"status": exc.status_code, "detail": exc.detail}
+        detail = exc.detail if isinstance(exc.detail, dict) else {}
+        error = {"status": exc.status_code, "code": detail.get("code"),
+                 "message": detail.get("message") or (exc.detail if isinstance(exc.detail, str) else None),
+                 "detail": exc.detail}
     except Exception as exc:
         error = {"status": 0, "detail": str(exc)}
     return {
@@ -252,7 +373,7 @@ async def list_sessions(limit: int = 60, offset: int = 0, source: Optional[str] 
     params: Dict[str, Any] = {"limit": max(1, min(limit, 200)), "offset": max(0, offset)}
     if source:
         params["source"] = source
-    return await _proxy_json("GET", _pfx(profile) + "/api/sessions", params=params)
+    return await _proxy_json("GET", _pfx(profile) + "/api/sessions", params=params, profile=profile)
 
 
 @router.post("/api/sessions")
@@ -260,7 +381,7 @@ async def create_session(body: NewSession, profile: Optional[str] = None) -> Any
     payload: Dict[str, Any] = {"source": "api_server"}
     if body.title:
         payload["title"] = body.title.strip()[:120]
-    return await _proxy_json("POST", _pfx(profile) + "/api/sessions", body=payload)
+    return await _proxy_json("POST", _pfx(profile) + "/api/sessions", body=payload, profile=profile)
 
 
 @router.patch("/api/sessions/{session_id}")
@@ -268,17 +389,17 @@ async def patch_session(session_id: str, body: PatchSession, profile: Optional[s
     payload = {k: v for k, v in body.model_dump().items() if v is not None}
     if not payload:
         raise HTTPException(status_code=400, detail="nada para alterar")
-    return await _proxy_json("PATCH", f"{_pfx(profile)}/api/sessions/{session_id}", body=payload)
+    return await _proxy_json("PATCH", f"{_pfx(profile)}/api/sessions/{session_id}", body=payload, profile=profile)
 
 
 @router.delete("/api/sessions/{session_id}")
 async def delete_session(session_id: str, profile: Optional[str] = None) -> Any:
-    return await _proxy_json("DELETE", f"{_pfx(profile)}/api/sessions/{session_id}")
+    return await _proxy_json("DELETE", f"{_pfx(profile)}/api/sessions/{session_id}", profile=profile)
 
 
 @router.get("/api/sessions/{session_id}")
 async def get_session(session_id: str, profile: Optional[str] = None) -> Any:
-    return await _proxy_json("GET", f"{_pfx(profile)}/api/sessions/{session_id}")
+    return await _proxy_json("GET", f"{_pfx(profile)}/api/sessions/{session_id}", profile=profile)
 
 
 @router.get("/api/sessions/{session_id}/messages")
@@ -286,7 +407,7 @@ async def messages(session_id: str, limit: Optional[int] = None, offset: int = 0
     params: Dict[str, Any] = {"offset": max(0, offset)}
     if limit is not None:
         params["limit"] = max(1, min(limit, 500))
-    return await _proxy_json("GET", f"{_pfx(profile)}/api/sessions/{session_id}/messages", params=params)
+    return await _proxy_json("GET", f"{_pfx(profile)}/api/sessions/{session_id}/messages", params=params, profile=profile)
 
 
 _MAX_UPLOAD_BYTES = 25 * 1024 * 1024
@@ -365,21 +486,21 @@ async def create_run(session_id: str, body: RunBody, profile: Optional[str] = No
         payload: Dict[str, Any] = {"input": [{"role": "user", "content": msg}], "session_id": session_id}
     else:
         payload = {"input": msg, "session_id": session_id}
-    return await _proxy_json("POST", f"{_pfx(profile)}/v1/runs", body=payload)
+    return await _proxy_json("POST", f"{_pfx(profile)}/v1/runs", body=payload, profile=profile)
 
 
 @router.get("/api/runs/{run_id}")
 async def run_status(run_id: str, profile: Optional[str] = None) -> Any:
     if not _RUN_ID_RE.match(run_id):
         raise HTTPException(status_code=400, detail="execução inválida")
-    return await _proxy_json("GET", f"{_pfx(profile)}/v1/runs/{run_id}")
+    return await _proxy_json("GET", f"{_pfx(profile)}/v1/runs/{run_id}", profile=profile)
 
 
 @router.post("/api/runs/{run_id}/stop")
 async def stop_run(run_id: str, profile: Optional[str] = None) -> Any:
     if not _RUN_ID_RE.match(run_id):
         raise HTTPException(status_code=400, detail="execução inválida")
-    return await _proxy_json("POST", f"{_pfx(profile)}/v1/runs/{run_id}/stop", body={})
+    return await _proxy_json("POST", f"{_pfx(profile)}/v1/runs/{run_id}/stop", body={}, profile=profile)
 
 
 @router.get("/api/runs/{run_id}/events")
@@ -388,7 +509,7 @@ async def run_events(run_id: str, profile: Optional[str] = None):
     import httpx
     if not _RUN_ID_RE.match(run_id):
         raise HTTPException(status_code=400, detail="execução inválida")
-    key = _api_key()
+    key = _api_key(profile)
     pfx = _pfx(profile)
 
     async def gen():
@@ -398,7 +519,8 @@ async def run_events(run_id: str, profile: Optional[str] = None):
                                     headers={"Authorization": f"Bearer {key}", "Accept": "text/event-stream"}) as r:
                     if r.status_code >= 400:
                         text = (await r.aread())[:300].decode(errors="replace")
-                        yield f"event: error\ndata: {json.dumps({'message': text, 'status': r.status_code})}\n\n".encode()
+                        payload = _gateway_sse_error(profile, r.status_code, text)
+                        yield f"event: error\ndata: {json.dumps(payload)}\n\n".encode()
                         return
                     async for chunk in r.aiter_bytes():
                         yield chunk
@@ -425,7 +547,7 @@ async def chat_stream(session_id: str, body: ChatBody, profile: Optional[str] = 
         for part in msg:
             if not isinstance(part, dict) or part.get("type") not in ("text", "image_url"):
                 raise HTTPException(status_code=400, detail="partes aceitas: text e image_url")
-    key = _api_key()
+    key = _api_key(profile)
 
     async def gen():
         try:
@@ -435,7 +557,8 @@ async def chat_stream(session_id: str, body: ChatBody, profile: Optional[str] = 
                                     json={"message": msg}) as r:
                     if r.status_code >= 400:
                         detail = (await r.aread()).decode("utf-8", "replace")[:400]
-                        yield f"event: error\ndata: {json.dumps({'message': detail, 'status': r.status_code})}\n\n".encode()
+                        payload = _gateway_sse_error(profile, r.status_code, detail)
+                        yield f"event: error\ndata: {json.dumps(payload)}\n\n".encode()
                         return
                     async for chunk in r.aiter_bytes():
                         yield chunk
@@ -472,7 +595,7 @@ async def run_approval(run_id: str, body: ApprovalBody, profile: Optional[str] =
         if not _RUN_ID_RE.match(request_id):
             raise HTTPException(status_code=400, detail="pedido inválido")
         payload["request_id"] = request_id
-    return await _proxy_json("POST", f"{_pfx(profile)}/v1/runs/{run_id}/approval", body=payload)
+    return await _proxy_json("POST", f"{_pfx(profile)}/v1/runs/{run_id}/approval", body=payload, profile=profile)
 
 
 # ── modo de aprovação (approvals.mode) ────────────────────────────────────────────

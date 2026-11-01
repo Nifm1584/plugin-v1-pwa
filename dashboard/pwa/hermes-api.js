@@ -111,6 +111,7 @@
       gateway: gateway || null,
       plugin: data.plugin || {},
       features: features,
+      error: data.gateway_error || null,
       unavailable: !gateway
     };
   }
@@ -162,12 +163,17 @@
           try { data = text ? JSON.parse(text) : null; } catch (e) { data = { raw: text }; }
           if (!response.ok) {
             var detail = data && (data.detail || data.error || data.message);
-            var message = typeof detail === "string" ? detail : (detail && detail.message) || ("HTTP " + response.status);
-            var code = response.status === 401 || response.status === 403 ? "auth"
-              : response.status === 404 ? "not_found"
-              : response.status === 405 ? "unsupported"
-              : response.status === 409 ? "conflict"
-              : response.status >= 500 ? "gateway_unavailable" : "api_error";
+            var message = typeof detail === "string" ? detail
+              : (detail && (detail.message || detail.error)) || ("HTTP " + response.status);
+            var code = (detail && detail.code) || (data && data.code) || "";
+            if (!code) {
+              code = response.status === 401 ? "session_expired"
+                : response.status === 403 ? "forbidden"
+                : response.status === 404 ? "not_found"
+                : response.status === 405 ? "unsupported"
+                : response.status === 409 ? "conflict"
+                : response.status >= 500 ? "gateway_unavailable" : "api_error";
+            }
             throw new ApiError(message, response.status, code, detail);
           }
           return data;
@@ -263,12 +269,20 @@
           credentials: "same-origin",
           headers: { "Accept": "text/event-stream" }
         }).then(function (response) {
-          if (response.status === 401 || response.status === 403) {
-            throw new ApiError("login", response.status, "auth");
-          }
           if (!response.ok) {
             return response.text().then(function (text) {
-              throw new ApiError(text.slice(0, 200) || ("HTTP " + response.status), response.status, "api_error");
+              var data = null;
+              try { data = text ? JSON.parse(text) : null; } catch (e) { data = null; }
+              var detail = data && (data.detail || data.error || data.message);
+              var message = typeof detail === "string" ? detail
+                : (detail && (detail.message || detail.error)) || text.slice(0, 200) || ("HTTP " + response.status);
+              var code = (detail && detail.code) || (data && data.code) || "";
+              if (!code) {
+                code = response.status === 401 ? "session_expired"
+                  : response.status === 403 ? "forbidden"
+                  : response.status >= 500 ? "gateway_unavailable" : "api_error";
+              }
+              throw new ApiError(message, response.status, code, detail);
             });
           }
           return response;
