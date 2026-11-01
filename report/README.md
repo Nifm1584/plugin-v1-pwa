@@ -31,6 +31,7 @@
 | [42-pendencias-correcao-multimidia.md](42-pendencias-correcao-multimidia.md) | Pendências futuras: menu de download da imagem e menu do PDF com visualização/baixar |
 | [43-validacao-computador-fase-40.md](43-validacao-computador-fase-40.md) | Validação manual do TREG PWA no computador/navegador, aprovada pelo usuário; complementa a validação mobile |
 | [45-congelamento-versao-estavel-quarta-atualizacao.md](45-congelamento-versao-estavel-quarta-atualizacao.md) | Congelamento oficial da quarta atualização no commit `9b34073`, tag, Release, verificações e pendências; o número 44 fica reservado para o diagnóstico da próxima fase |
+| [46-autenticacao-multiperfil-treg-pwa.md](46-autenticacao-multiperfil-treg-pwa.md) | Correção da autenticação e autorização por perfil, classificação de erros, retorno ao perfil padrão, testes executados e pendência da `API_SERVER_KEY` externa |
 
 | Arquivo | Conteúdo |
 |---|---|
