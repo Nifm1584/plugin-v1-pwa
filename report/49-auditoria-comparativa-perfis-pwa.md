@@ -221,7 +221,7 @@ A falha atual é compatível com a **ausência da `API_SERVER_KEY` no escopo do 
 ## 9. Limitações
 
 - Não foi executado um teste controlado do PWA original contra o mesmo gateway/perfil da VPS; a conclusão sobre o original é baseada em código e README.
-- Não houve acesso à VPS nesta fase; os dados de 401 vêm do Relatório 47.
+- Não houve acesso SSH, execução de comandos, deploy, reinício ou alteração de configuração/serviço na VPS. Os dados de 401 vêm do Relatório 47.
 - Não foram criados, alterados ou removidos perfis, chaves, configurações ou serviços.
 - O TREG congelado e a Fase 3 foram comparados; a versão instalada pode conter apenas parte das mudanças, dependendo do deploy.
 
