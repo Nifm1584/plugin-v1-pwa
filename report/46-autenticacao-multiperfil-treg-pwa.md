@@ -26,7 +26,7 @@ A branch `fix/treg-pwa-autenticacao-multiperfil` foi criada a partir do commit c
 | Primeiro commit da correção | `71038be055bff1a496bb5851004ef95fc992d5f5` |
 | Commit final | `a24cab2cf2a763c00ed2883eb2eb30741c0329c4` |
 
-O commit `a24cab2` acrescenta apenas o desligamento da execução ativa ao trocar de perfil. O commit `71038be` contém a implementação principal.
+O commit `a24cab2` acrescenta o desligamento da execução ativa ao trocar de perfil e o teste correspondente. O commit `71038be` contém a implementação principal.
 
 ## 3. Arquivos alterados
 
